@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  transitpulse:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - TRANSIPULSE_DATABASE_URL=sqlite+aiosqlite:///./transipulse.db
+      - TRANSIPULSE_DEBUG=true
+      - TRANSIPULSE_AI_ENABLED=true
+      - TRANSIPULSE_AI_PROVIDER=heuristic
+    volumes:
+      - .:/app
+    command: python -m app.main

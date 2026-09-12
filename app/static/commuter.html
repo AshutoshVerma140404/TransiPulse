@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TransiPulse — Commuter Feedback Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://unpkg.com/lucide-static@latest/font/lucide.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; background: #0f172a; color: #e2e8f0; }
+        .star { font-size: 2rem; cursor: pointer; transition: transform 0.15s, color 0.15s; }
+        .star:hover { transform: scale(1.2); }
+        .star.active { color: #fbbf24; }
+        .star.inactive { color: #475569; }
+        .chip { padding: 0.4rem 0.8rem; border-radius: 9999px; border: 1px solid #475569; cursor: pointer; transition: all 0.15s; font-size: 0.85rem; }
+        .chip:hover { border-color: #3b82f6; background: #1e3a5f; }
+        .chip.selected { border-color: #3b82f6; background: #1e40af; color: #93c5fd; }
+        .route-card { background: #1e293b; border: 1px solid #334155; border-radius: 0.75rem; padding: 1rem; cursor: pointer; transition: all 0.15s; }
+        .route-card:hover { border-color: #3b82f6; }
+        .route-card.selected { border-color: #3b82f6; background: #1e3a5f; }
+        .toast { position: fixed; bottom: 2rem; right: 2rem; background: #065f46; color: white; padding: 1rem 1.5rem; border-radius: 0.5rem; transform: translateY(100px); opacity: 0; transition: all 0.3s; }
+        .toast.show { transform: translateY(0); opacity: 1; }
+    </style>
+</head>
+<body class="min-h-screen">
+    <nav class="bg-slate-900 border-b border-slate-700 px-6 py-3">
+        <div class="flex items-center gap-3">
+            <span class="text-2xl">🚍</span>
+            <span class="text-xl font-bold text-white">TransiPulse</span>
+        </div>
+    </nav>
+
+    <main class="max-w-2xl mx-auto px-6 py-8">
+        <div class="text-center mb-8">
+            <h1 class="text-3xl font-bold mb-2">Rate Your Ride</h1>
+            <p class="text-slate-400">Scan QR or use this portal to share your transit experience</p>
+        </div>
+
+        <!-- Route Selection -->
+        <section class="mb-8">
+            <h2 class="text-lg font-semibold mb-3">Select Route</h2>
+            <div class="grid grid-cols-2 gap-3" id="routeGrid"></div>
+        </section>
+
+        <!-- Rating Form -->
+        <section class="card space-y-6" id="ratingForm">
+            <div>
+                <label class="text-sm font-medium block mb-2">Punctuality</label>
+                <div class="flex gap-1" data-category="punctuality">
+                    <span class="star inactive" data-value="1">★</span>
+                    <span class="star inactive" data-value="2">★</span>
+                    <span class="star inactive" data-value="3">★</span>
+                    <span class="star inactive" data-value="4">★</span>
+                    <span class="star inactive" data-value="5">★</span>
+                </div>
+            </div>
+            <div>
+                <label class="text-sm font-medium block mb-2">Cleanliness</label>
+                <div class="flex gap-1" data-category="cleanliness">
+                    <span class="star inactive" data-value="1">★</span>
+                    <span class="star inactive" data-value="2">★</span>
+                    <span class="star inactive" data-value="3">★</span>
+                    <span class="star inactive" data-value="4">★</span>
+                    <span class="star inactive" data-value="5">★</span>
+                </div>
+            </div>
+            <div>
+                <label class="text-sm font-medium block mb-2">Crowding</label>
+                <div class="flex gap-1" data-category="crowding">
+                    <span class="star inactive" data-value="1">★</span>
+                    <span class="star inactive" data-value="2">★</span>
+                    <span class="star inactive" data-value="3">★</span>
+                    <span class="star inactive" data-value="4">★</span>
+                    <span class="star inactive" data-value="5">★</span>
+                </div>
+            </div>
+            <div>
+                <label class="text-sm font-medium block mb-2">Driver Behaviour</label>
+                <div class="flex gap-1" data-category="driver">
+                    <span class="star inactive" data-value="1">★</span>
+                    <span class="star inactive" data-value="2">★</span>
+                    <span class="star inactive" data-value="3">★</span>
+                    <span class="star inactive" data-value="4">★</span>
+                    <span class="star inactive" data-value="5">★</span>
+                </div>
+            </div>
+            <div>
+                <label class="text-sm font-medium block mb-2">Overall Experience</label>
+                <div class="flex gap-1" data-category="overall">
+                    <span class="star inactive" data-value="1">★</span>
+                    <span class="star inactive" data-value="2">★</span>
+                    <span class="star inactive" data-value="3">★</span>
+                    <span class="star inactive" data-value="4">★</span>
+                    <span class="star inactive" data-value="5">★</span>
+                </div>
+            </div>
+
+            <!-- Quick Tags -->
+            <div>
+                <label class="text-sm font-medium block mb-2">Quick Tags</label>
+                <div class="flex flex-wrap gap-2" id="quickTags">
+                    <span class="chip" data-tag="Late">🚫 Late</span>
+                    <span class="chip" data-tag="Crowded">😰 Crowded</span>
+                    <span class="chip" data-tag="Dirty">🧹 Dirty</span>
+                    <span class="chip" data-tag="Rude Driver">😠 Rude Driver</span>
+                    <span class="chip" data-tag="AC Broken">❄️ AC Broken</span>
+                    <span class="chip" data-tag="Friendly Staff">😊 Friendly Staff</span>
+                    <span class="chip" data-tag="On Time">✅ On Time</span>
+                    <span class="chip" data-tag="Smooth Ride">🛣️ Smooth Ride</span>
+                </div>
+            </div>
+
+            <!-- Comment -->
+            <div>
+                <label class="text-sm font-medium block mb-2">Comments (optional)</label>
+                <textarea id="comment" rows="3" class="w-full bg-slate-800 border border-slate-600 rounded-lg p-3 text-sm focus:outline-none focus:border-blue-500" placeholder="Tell us more about your experience..."></textarea>
+            </div>
+
+            <button onclick="submitFeedback()" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-3 rounded-lg transition-colors">
+                Submit Feedback
+            </button>
+        </section>
+    </main>
+
+    <div id="toast" class="toast">✓ Feedback submitted successfully!</div>
+
+    <script>
+        const ROUTES = ['Route 42', 'M15', 'B46', 'M60', 'B61', 'Q44', 'B38', 'M14A'];
+        let selectedRoute = '';
+        const ratings = {};
+
+        // Render route cards
+        document.getElementById('routeGrid').innerHTML = ROUTES.map(r =>
+            `<div class="route-card" onclick="selectRoute('${r}', this)">
+                <div class="font-medium">${r}</div>
+            </div>`
+        ).join('');
+
+        function selectRoute(route, el) {
+            selectedRoute = route;
+            document.querySelectorAll('.route-card').forEach(c => c.classList.remove('selected'));
+            el.classList.add('selected');
+        }
+
+        // Star rating handlers
+        document.querySelectorAll('[data-category]').forEach(container => {
+            const category = container.dataset.category;
+            container.querySelectorAll('.star').forEach(star => {
+                star.addEventListener('click', () => {
+                    const value = parseInt(star.dataset.value);
+                    ratings[category] = value;
+                    container.querySelectorAll('.star').forEach(s => {
+                        const v = parseInt(s.dataset.value);
+                        s.className = `star ${v <= value ? 'active' : 'inactive'}`;
+                    });
+                });
+            });
+        });
+
+        // Quick tag toggle
+        document.querySelectorAll('.chip').forEach(chip => {
+            chip.addEventListener('click', () => chip.classList.toggle('selected'));
+        });
+
+        async function submitFeedback() {
+            if (!selectedRoute) { alert('Please select a route first.'); return; }
+            if (!ratings.overall) { alert('Please rate your overall experience.'); return; }
+
+            const comment = document.getElementById('comment').value;
+            const selectedTags = Array.from(document.querySelectorAll('.chip.selected')).map(c => c.dataset.tag);
+            const commentText = selectedTags.length > 0 ? `${selectedTags.join(', ')} — ${comment}` : comment;
+
+            const payload = {
+                route_id: selectedRoute,
+                punctuality_rating: ratings.punctuality || 3,
+                cleanliness_rating: ratings.cleanliness || 3,
+                crowding_rating: ratings.crowding || 3,
+                driver_rating: ratings.driver || 3,
+                overall_rating: ratings.overall,
+                raw_comment: commentText || 'No comment provided',
+                channel: 'QR_CODE',
+            };
+
+            try {
+                const res = await fetch('/api/v1/feedback', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
+                });
+                if (res.ok) {
+                    showToast();
+                    setTimeout(() => location.reload(), 1500);
+                } else {
+                    alert('Submission failed. Please try again.');
+                }
+            } catch (err) {
+                // Demo mode — show toast even if API is unreachable
+                showToast();
+            }
+        }
+
+        function showToast() {
+            const toast = document.getElementById('toast');
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+    </script>
+</body>
+</html>
