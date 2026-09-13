@@ -49,14 +49,16 @@ class AnalyticsService:
 
         # Compute on-the-fly if cache miss
         feedback_rows = await self._fetch_ratings_for_route(route_id)
-        ranking = ranking_engine.compute_bayesian_score(feedback_rows, settings.bayesian_m)
+        bayesian, raw_avg = ranking_engine.compute_bayesian_score(feedback_rows, settings.bayesian_m)
         worst_period = temporal_engine.compute_worst_period(feedback_rows)
         top_issues = ranking_engine.compute_top_issues(feedback_rows)
-        deterioration = deterioration_engine.compute_deterioration(feedback_rows)
+        ratings = [float(f.get("overall_rating", 3.0)) for f in feedback_rows]
+        complaints = [1] * len(feedback_rows)
+        deterioration = deterioration_engine.compute_deterioration(ratings, complaints)
 
         return CaseStudyCard(
             route_id=route_id,
-            overall_rating=round(ranking, 1),
+            overall_rating=round(bayesian, 1) if bayesian else 0.0,
             top_issue=top_issues.get("top_issue"),
             second_issue=top_issues.get("second_issue"),
             worst_period=worst_period,

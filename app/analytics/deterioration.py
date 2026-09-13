@@ -69,7 +69,7 @@ def compute_deterioration(
             status: str ("IMPROVING" | "STABLE" | "DETERIORATING" | "CRITICAL")
             recommendation: str
     """
-    if not ratings or not complaints or len(ratings) < long_window + 1:
+    if not ratings or not complaints or len(ratings) < 2:
         return {
             "velocity": 0.0,
             "accel": 0.0,
@@ -170,8 +170,15 @@ def compute_all_deterioration(
     """
     results = []
     for route_id, data in routes_data.items():
-        ratings = [float(r["overall_rating"]) for r in data.get("ratings", [])]
-        complaints = [int(c) for c in data.get("complaints", [])]
+        if isinstance(data, list):
+            ratings = [float(r.get("overall_rating", 3.0)) if isinstance(r, dict) else float(r) for r in data]
+            complaints = [1] * len(ratings)
+        elif isinstance(data, dict):
+            ratings = [float(r["overall_rating"]) if isinstance(r, dict) else float(r) for r in data.get("ratings", [])]
+            complaints = [int(c["complaints"]) if isinstance(c, dict) else int(c) for c in data.get("complaints", [])]
+        else:
+            ratings = []
+            complaints = []
 
         result = compute_deterioration(
             ratings=ratings,

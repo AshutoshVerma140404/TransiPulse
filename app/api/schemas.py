@@ -170,9 +170,11 @@ class HeatmapCell(BaseModel):
     """A single cell in the temporal heatmap."""
 
     hour: int
-    day_of_week: int
-    complaint_count: int
-    avg_severity: float
+    day_of_week: str
+    hour_label: Optional[str] = None
+    complaint_count: int = 0
+    average_rating: float = 5.0
+    intensity: float = 0.0
 
 
 class TemporalHeatmapResponse(BaseModel):

@@ -22,8 +22,9 @@ async def test_bayesian_score_multiple_ratings():
     """Test Bayesian score with multiple ratings."""
     ratings = [{"overall_rating": 4.0}, {"overall_rating": 3.5}, {"overall_rating": 5.0}]
     bayesian, raw = compute_bayesian_score(ratings, m=15)
-    assert bayesian > raw
-    assert bayesian < 5.0
+    # Bayesian shrinkage pulls raw score (4.17) towards system mean (3.0) for small sample sizes
+    assert bayesian < raw
+    assert bayesian > 3.0
 
 
 @pytest.mark.asyncio

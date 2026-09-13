@@ -34,6 +34,12 @@ class RouteService:
         return route
 
     async def create_route(self, route_data: dict) -> Route:
+        existing = await self.db.get(Route, route_data["id"])
+        if existing is not None:
+            for k, v in route_data.items():
+                setattr(existing, k, v)
+            await self.db.flush()
+            return existing
         route = Route(**route_data)
         self.db.add(route)
         await self.db.flush()

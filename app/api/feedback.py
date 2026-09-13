@@ -90,7 +90,9 @@ async def feedback_stats(
 # ---------------------------------------------------------------------------
 def _to_response(feedback) -> FeedbackResponse:
     """Map a Feedback ORM model to a FeedbackResponse schema."""
-    ai_class = getattr(feedback, "ai_classification", None)
+    ai_class = None
+    if "ai_classification" in getattr(feedback, "__dict__", {}):
+        ai_class = feedback.ai_classification
     return FeedbackResponse(
         id=feedback.id,
         route_id=feedback.route_id,
@@ -106,8 +108,8 @@ def _to_response(feedback) -> FeedbackResponse:
         stop_name=feedback.stop_name,
         bus_id=feedback.bus_id,
         channel=feedback.channel.value if isinstance(feedback.channel, FeedbackChannel) else feedback.channel,
-        primary_category=ai_class.primary_category if ai_class else None,
-        severity=ai_class.severity if ai_class else None,
-        sentiment=ai_class.sentiment if ai_class else None,
-        urgency_score=ai_class.urgency_score if ai_class else None,
+        primary_category=getattr(ai_class, "primary_category", None) if ai_class else None,
+        severity=getattr(ai_class, "severity", None) if ai_class else None,
+        sentiment=getattr(ai_class, "sentiment", None) if ai_class else None,
+        urgency_score=getattr(ai_class, "urgency_score", None) if ai_class else None,
     )

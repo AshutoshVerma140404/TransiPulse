@@ -11,11 +11,22 @@ from app.core.database import get_db
 from app.core.exceptions import ResourceNotFound
 from app.core.logging import logger
 from app.models import Route, RouteAnalyticsCache
-from app.api.schemas import RouteResponse
+from app.api.schemas import RouteCreate, RouteResponse
 from app.services.route_service import RouteService
 from app.services.analytics_service import AnalyticsService
 
 router = APIRouter()
+
+
+@router.post("/", status_code=status.HTTP_201_CREATED, response_model=RouteResponse)
+async def create_route(
+    route_data: RouteCreate,
+    db: AsyncSession = Depends(get_db),
+) -> RouteResponse:
+    """Create a new bus route."""
+    service = RouteService(db)
+    route = await service.create_route(route_data.model_dump())
+    return RouteResponse.model_validate(route)
 
 
 @router.get("/", response_model=list[RouteResponse])
@@ -26,7 +37,7 @@ async def list_routes(
     """List all monitored routes with health badges."""
     service = RouteService(db)
     routes = await service.list_routes(active_only=active_only)
-    return [_route_to_response(r, db) for r in routes]
+    return [await _route_to_response(r, db) for r in routes]
 
 
 @router.get("/{route_id}", response_model=RouteResponse)
@@ -48,8 +59,9 @@ async def get_route_summary(
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """Case study required card format (Rating, Top Issues, Worst Period, Monthly Count)."""
-    service = AnalyticsService(db)
-    return service.get_route_summary(route_id).model_dump()
+    analytics_service = AnalyticsService(db)
+    summary = await analytics_service.get_route_summary(route_id)
+    return summary.model_dump()
 
 
 # ---------------------------------------------------------------------------

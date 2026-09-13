@@ -18,6 +18,12 @@ class TripService:
         self.db = db
 
     async def create_trip(self, trip_data: dict) -> Trip:
+        existing = await self.db.get(Trip, trip_data["id"])
+        if existing is not None:
+            for k, v in trip_data.items():
+                setattr(existing, k, v)
+            await self.db.flush()
+            return existing
         trip = Trip(**trip_data)
         self.db.add(trip)
         await self.db.flush()

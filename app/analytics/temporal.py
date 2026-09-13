@@ -28,9 +28,19 @@ SEVERITY_WEIGHTS = {
 WINDOW_HOURS = 2
 
 
-def _severity_weight(severity: Optional[str]) -> float:
-    """Return the numeric weight for a severity string."""
-    return SEVERITY_WEIGHTS.get(severity, 1.0) if severity else 1.0
+def _severity_weight(severity: Any) -> float:
+    """Return the numeric weight for a severity string or list of severities."""
+    if not severity:
+        return 1.0
+    if isinstance(severity, list):
+        if not severity:
+            return 1.0
+        weights = [SEVERITY_WEIGHTS.get(s, 1.0) for s in severity if isinstance(s, str)]
+        return float(np.mean(weights)) if weights else 1.0
+    if isinstance(severity, str):
+        return SEVERITY_WEIGHTS.get(severity, 1.0)
+    return 1.0
+
 
 
 def compute_severity_index(
@@ -123,7 +133,7 @@ def compute_worst_period(ratings_data: List[dict]) -> Optional[str]:
 
     if scores.size == 0 or np.all(scores == 0):
         # Fallback: just find the hour with lowest average rating
-        worst_hour = int(np.argmin(list(avg_by_hour.values())))
+        worst_start_hour = int(np.argmin(list(avg_by_hour.values())))
     else:
         worst_start_hour = int(np.argmax(scores))
 
@@ -171,3 +181,45 @@ def find_peak_hour(ratings_data: List[dict]) -> Optional[int]:
 
     worst_hour = min(hour_means, key=hour_means.get)
     return worst_hour
+
+
+def hour_label(hour: Optional[int]) -> str:
+    """Format hour (0-23) into human readable string, e.g. 17 -> '5 PM'."""
+    if hour is None:
+        return ""
+    if hour == 0:
+        return "12 AM"
+    if hour < 12:
+        return f"{hour} AM"
+    if hour == 12:
+        return "12 PM"
+    return f"{hour - 12} PM"
+
+
+def compute_heatmap(ratings_data: List[dict]) -> List[dict]:
+    """Compute 24x7 heatmap cells (day_of_week x hour_of_day) with intensity/volume metrics."""
+    cell_map = {}
+    for entry in ratings_data:
+        h = entry.get("hour_of_day", 0)
+        day = entry.get("day_of_week", 0)
+        rating = float(entry.get("overall_rating", 3.0))
+        key = (day, h)
+        cell_map.setdefault(key, []).append(rating)
+
+    cells = []
+    days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+    for day_idx, day_name in enumerate(days):
+        for h in range(24):
+            ratings = cell_map.get((day_idx, h), [])
+            count = len(ratings)
+            avg = float(np.mean(ratings)) if count > 0 else 5.0
+            intensity = round((5.0 - avg) / 4.0, 2)
+            cells.append({
+                "day_of_week": day_name,
+                "hour": h,
+                "hour_label": hour_label(h),
+                "complaint_count": count,
+                "average_rating": round(avg, 2),
+                "intensity": intensity,
+            })
+    return cells

@@ -10,26 +10,11 @@ from app.models import Base
 from app.core.database import engine
 
 
-@pytest.fixture(scope="session")
-def db_setup():
-    """Setup database for tests."""
-    async def setup():
-        async with engine.begin() as conn:
-            await conn.run_sync(Base.metadata.create_all)
-
-    return setup
-
-
-@pytest.fixture(scope="function")
-async def clean_db(db_setup):
-    """Clean database before each test."""
-    await db_setup()
-
-
 @pytest.fixture
 def client():
-    """Test client."""
-    return TestClient(app)
+    """Test client with application lifespan setup and teardown."""
+    with TestClient(app) as client:
+        yield client
 
 
 def test_root_endpoint(client):
@@ -48,7 +33,7 @@ def test_health_check(client):
     assert "Welcome" in response.json()["message"]
 
 
-def test_routes_list(client, clean_db):
+def test_routes_list(client):
     """Test listing routes."""
     response = client.get("/api/v1/routes/")
     assert response.status_code == 200
@@ -56,8 +41,10 @@ def test_routes_list(client, clean_db):
     assert isinstance(data, list)
 
 
-def test_create_and_get_trip(client, clean_db):
+def test_create_and_get_trip(client):
     """Test trip creation and retrieval."""
+    # Ensure parent route exists
+    client.post("/api/v1/routes/", json={"id": "Route 42", "name": "Route 42", "origin": "A", "destination": "B"})
     trip_data = {
         "id": "TRIP-001",
         "route_id": "Route 42",
@@ -75,7 +62,7 @@ def test_create_and_get_trip(client, clean_db):
     assert trip["route_id"] == trip_data["route_id"]
 
 
-def test_submit_feedback(client, clean_db):
+def test_submit_feedback(client):
     """Test feedback submission."""
     feedback_data = {
         "route_id": "Route 42",
@@ -94,7 +81,7 @@ def test_submit_feedback(client, clean_db):
     assert feedback["overall_rating"] == feedback_data["overall_rating"]
 
 
-def test_filter_feedback(client, clean_db):
+def test_filter_feedback(client):
     """Test feedback filtering."""
     # First submit a feedback
     feedback_data = {
@@ -113,7 +100,7 @@ def test_filter_feedback(client, clean_db):
     assert data[0]["route_id"] == "Route 42"
 
 
-def test_analytics_rankings(client, clean_db):
+def test_analytics_rankings(client):
     """Test analytics rankings endpoint."""
     response = client.get("/api/v1/analytics/rankings")
     assert response.status_code == 200
@@ -121,7 +108,7 @@ def test_analytics_rankings(client, clean_db):
     assert isinstance(data, list)
 
 
-def test_analytics_deterioration(client, clean_db):
+def test_analytics_deterioration(client):
     """Test deterioration analytics."""
     response = client.get("/api/v1/analytics/deterioration")
     assert response.status_code == 200
@@ -129,7 +116,7 @@ def test_analytics_deterioration(client, clean_db):
     assert isinstance(data, list)
 
 
-def test_analytics_temporal_heatmap(client, clean_db):
+def test_analytics_temporal_heatmap(client):
     """Test temporal heatmap endpoint."""
     response = client.get("/api/v1/analytics/temporal-heatmap")
     assert response.status_code == 200
@@ -161,7 +148,7 @@ def test_batch_process_endpoint(client):
     assert "message" in data
 
 
-def test_route_summary(client, clean_db):
+def test_route_summary(client):
     """Test route summary endpoint."""
     response = client.get("/api/v1/routes/Route 42/summary")
     assert response.status_code == 200
@@ -170,7 +157,7 @@ def test_route_summary(client, clean_db):
     assert "overall_rating" in data
 
 
-def test_health_check_multiple_routes(client, clean_db):
+def test_health_check_multiple_routes(client):
     """Test creating and retrieving multiple routes."""
     routes = [
         {"id": "Route A", "name": "A Line", "origin": "X", "destination": "Y"},
@@ -187,12 +174,12 @@ def test_health_check_multiple_routes(client, clean_db):
     assert len(data) >= 2
 
 
-def test_stress_submit_multiple_feedback(client, clean_db):
+def test_stress_submit_multiple_feedback(client):
     """Test submitting multiple feedback entries."""
     for i in range(5):
         feedback_data = {
             "route_id": f"Route {i + 10}",
-            "overall_rating": 3.0 + i,
+            "overall_rating": min(5.0, 1.0 + i),
             "raw_comment": f"Test feedback {i}",
             "channel": "WEB",
         }
