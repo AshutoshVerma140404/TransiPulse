@@ -117,15 +117,17 @@
             try {
                 // Load rankings
                 const res = await fetch(`${API}/api/v1/analytics/rankings`);
+                let rankings = [];
                 if (res.ok) {
-                    const rankings = await res.json();
+                    rankings = await res.json();
                     renderRankings(rankings);
                 }
 
                 // Load deterioration
                 const detRes = await fetch(`${API}/api/v1/analytics/deterioration`);
+                let deterioration = [];
                 if (detRes.ok) {
-                    const deterioration = await detRes.json();
+                    deterioration = await detRes.json();
                     renderDeterioration(deterioration);
                 }
 
@@ -142,6 +144,17 @@
                     const summary = await sumRes.json();
                     renderSpotlight(summary);
                 }
+
+                // Load recent feedback feed
+                const feedRes = await fetch(`${API}/api/v1/feedback/?limit=20`);
+                let feedbacks = [];
+                if (feedRes.ok) {
+                    feedbacks = await feedRes.json();
+                    renderFeedbackFeed(feedbacks);
+                }
+
+                // Update KPI Cards
+                renderKPIs(rankings, deterioration, feedbacks);
 
                 document.getElementById('lastUpdated').textContent = new Date().toLocaleString();
             } catch (err) {
@@ -229,6 +242,62 @@
                     </div>
                 </div>
             `;
+        }
+
+        function renderKPIs(rankings, deterioration, feedbacks) {
+            document.getElementById('kpiTotal').textContent = feedbacks.length || 0;
+
+            const avgRating = rankings.length ? (rankings.reduce((acc, r) => acc + (r.bayesian_rating || 0), 0) / rankings.length).toFixed(1) : '—';
+            document.getElementById('kpiRating').textContent = avgRating !== '—' ? `${avgRating} / 5` : '—';
+
+            const criticalCount = deterioration.filter(d => d.deterioration_status === 'CRITICAL' || d.deterioration_status === 'DETERIORATING').length;
+            document.getElementById('kpiCritical').textContent = criticalCount;
+
+            const catCounts = {};
+            feedbacks.forEach(f => {
+                if (f.primary_category) catCounts[f.primary_category] = (catCounts[f.primary_category] || 0) + 1;
+            });
+            let topCat = '—';
+            let maxCount = 0;
+            for (const [cat, cnt] of Object.entries(catCounts)) {
+                if (cnt > maxCount) { maxCount = cnt; topCat = cat; }
+            }
+            document.getElementById('kpiTopIssue').textContent = topCat;
+        }
+
+        function renderFeedbackFeed(feedbacks) {
+            const container = document.getElementById('feedbackFeed');
+            if (!feedbacks || !feedbacks.length) {
+                container.innerHTML = '<p class="text-slate-400 text-sm py-4 text-center">No commuter feedback recorded yet.</p>';
+                return;
+            }
+            container.innerHTML = feedbacks.map(f => {
+                const dateStr = f.created_at ? new Date(f.created_at).toLocaleString() : 'Just now';
+                const catBadge = f.primary_category ? `<span class="badge bg-slate-800 text-blue-300 border border-blue-500/30 ml-2">${f.primary_category}</span>` : '';
+                const sevBadge = f.severity ? `<span class="badge ${f.severity === 'Critical' || f.severity === 'High' ? 'badge-critical' : 'badge-stable'} ml-1">${f.severity}</span>` : '';
+                const stars = '★'.repeat(Math.round(f.overall_rating || 5));
+
+                return `
+                    <div class="p-4 bg-slate-800/80 border border-slate-700/60 rounded-xl space-y-2">
+                        <div class="flex items-center justify-between flex-wrap gap-2">
+                            <div class="flex items-center flex-wrap gap-1">
+                                <span class="font-bold text-white">${f.route_id || 'General Route'}</span>
+                                <span class="text-xs text-yellow-400 ml-2 font-mono">${stars} ${f.overall_rating ? f.overall_rating.toFixed(1) : ''}</span>
+                                ${catBadge}
+                                ${sevBadge}
+                            </div>
+                            <span class="text-xs text-slate-400">${dateStr}</span>
+                        </div>
+                        <div class="text-sm text-slate-200">${f.raw_comment || '<span class="text-slate-400 italic">No text comment provided</span>'}</div>
+                        <div class="text-xs text-slate-400 flex flex-wrap gap-4 pt-1 border-t border-slate-700/40">
+                            ${f.stop_name ? `<span>📍 ${f.stop_name}</span>` : ''}
+                            ${f.bus_id ? `<span>🚌 Bus ${f.bus_id}</span>` : ''}
+                            <span>📱 Channel: ${f.channel || 'WEB'}</span>
+                            ${f.sentiment ? `<span>😊 Sentiment: ${f.sentiment}</span>` : ''}
+                        </div>
+                    </div>
+                `;
+            }).join('');
         }
 
         // Initial load
