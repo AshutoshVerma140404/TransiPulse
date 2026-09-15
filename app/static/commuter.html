@@ -847,6 +847,50 @@
     <script>
 
         /* ========================================
+           QR URL PARAM PRE-FILL
+        ======================================== */
+
+        (function applyQRParams() {
+            const params = new URLSearchParams(window.location.search);
+            const qrRoute = params.get('route');
+            const qrBus   = params.get('bus');
+
+            if (!qrRoute && !qrBus) return; // normal web session
+
+            /* ── Route ── */
+            if (qrRoute) {
+                const sel = document.getElementById('routeSelect');
+                /* Try to match an existing option */
+                let matched = false;
+                for (const opt of sel.options) {
+                    if (opt.value === qrRoute) { opt.selected = true; matched = true; break; }
+                }
+                /* If not matched, inject an option */
+                if (!matched) {
+                    const opt = document.createElement('option');
+                    opt.value = qrRoute;
+                    opt.textContent = qrRoute;
+                    opt.selected = true;
+                    sel.appendChild(opt);
+                }
+                /* Lock it */
+                sel.disabled = true;
+                sel.classList.add('opacity-70', 'cursor-not-allowed');
+            }
+
+            /* ── Bus Number ── */
+            if (qrBus) {
+                const input = document.getElementById('busDigits');
+                input.value = qrBus.replace(/^UP53\s*K\s*/i, '').trim();
+                input.readOnly = true;
+                input.classList.add('opacity-70', 'cursor-not-allowed');
+            }
+
+            window._qrScanned = true;
+        })();
+
+
+        /* ========================================
            STATE
         ======================================== */
 
@@ -999,7 +1043,7 @@
                     busId,
 
                 channel:
-                    "WEB"
+                    (window._qrScanned ? "QR_CODE" : "WEB")
             };
 
 

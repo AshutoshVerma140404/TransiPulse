@@ -3,307 +3,1485 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TransiPulse — Operations Analytics Dashboard</title>
+    <title>TransiPulse — Operations Dashboard</title>
+    <meta name="description" content="TransiPulse operations analytics dashboard for real-time route monitoring and commuter feedback.">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link rel="stylesheet" href="https://unpkg.com/lucide-static@latest/font/lucide.css">
+    <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-        body { font-family: 'Inter', sans-serif; background: #0f172a; color: #e2e8f0; }
-        .card { background: #1e293b; border: 1px solid #334155; border-radius: 0.75rem; padding: 1.5rem; }
-        .badge { padding: 0.25rem 0.5rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; }
-        .badge-healthy { background: #064e3b; color: #34d399; }
-        .badge-warning { background: #78350f; color: #fbbf24; }
-        .badge-critical { background: #7f1d1d; color: #fca5a5; }
-        .badge-stable { background: #1e3a5f; color: #93c5fd; }
-        .badge-deteriorating { background: #7f1d1d; color: #fca5a5; }
-        .badge-critical-alert { background: #7f1d1d; color: #fca5a5; }
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #f8fafc;
+            color: #0f172a;
+            margin: 0;
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* ── SIDEBAR ─────────────────────────────────────── */
+        #sidebar {
+            width: 240px;
+            min-height: 100vh;
+            background: #ffffff;
+            border-right: 1px solid #e2e8f0;
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            top: 0; left: 0;
+            z-index: 50;
+            box-shadow: 4px 0 24px rgba(0,0,0,0.04);
+        }
+
+        .sidebar-logo {
+            padding: 1.25rem 1.25rem 1rem;
+            border-bottom: 1px solid #f1f5f9;
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+        }
+
+        .sidebar-logo img {
+            height: 38px;
+            width: auto;
+        }
+
+        .sidebar-brand {
+            font-size: 1rem;
+            font-weight: 800;
+            color: #0f172a;
+            letter-spacing: -0.02em;
+        }
+
+        .sidebar-brand span {
+            color: #dc2626;
+        }
+
+        .sidebar-section-label {
+            font-size: 0.625rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #94a3b8;
+            padding: 1.1rem 1.25rem 0.4rem;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 0.65rem;
+            padding: 0.6rem 1.25rem;
+            margin: 0.1rem 0.6rem;
+            border-radius: 0.6rem;
+            font-size: 0.825rem;
+            font-weight: 500;
+            color: #64748b;
+            cursor: pointer;
+            transition: background 0.15s, color 0.15s;
+            text-decoration: none;
+            border: none;
+            background: none;
+            width: calc(100% - 1.2rem);
+            text-align: left;
+        }
+
+        .nav-item:hover {
+            background: #f8fafc;
+            color: #0f172a;
+        }
+
+        .nav-item.active {
+            background: #fef2f2;
+            color: #dc2626;
+            font-weight: 600;
+        }
+
+        .nav-item .nav-icon {
+            width: 18px;
+            height: 18px;
+            opacity: 0.7;
+            flex-shrink: 0;
+        }
+
+        .nav-item.active .nav-icon {
+            opacity: 1;
+        }
+
+        .sidebar-footer {
+            margin-top: auto;
+            padding: 1rem 1.25rem;
+            border-top: 1px solid #f1f5f9;
+        }
+
+        .sidebar-footer .refresh-btn {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            width: 100%;
+            padding: 0.55rem 0.85rem;
+            border-radius: 0.6rem;
+            background: #0f172a;
+            color: #ffffff;
+            font-size: 0.78rem;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+            transition: background 0.15s, transform 0.1s;
+        }
+
+        .sidebar-footer .refresh-btn:hover {
+            background: #1e293b;
+        }
+
+        .sidebar-footer .refresh-btn:active {
+            transform: scale(0.97);
+        }
+
+        .last-updated {
+            font-size: 0.65rem;
+            color: #94a3b8;
+            margin-top: 0.5rem;
+            text-align: center;
+        }
+
+        /* ── MAIN CONTENT ────────────────────────────────── */
+        #main {
+            margin-left: 240px;
+            flex: 1;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ── TOP BAR ─────────────────────────────────────── */
+        #topbar {
+            background: #ffffff;
+            border-bottom: 1px solid #e2e8f0;
+            padding: 0.9rem 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 40;
+        }
+
+        .topbar-title {
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: #0f172a;
+        }
+
+        .topbar-subtitle {
+            font-size: 0.72rem;
+            color: #94a3b8;
+            margin-top: 0.1rem;
+        }
+
+        .topbar-right {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .live-dot {
+            width: 7px; height: 7px;
+            border-radius: 50%;
+            background: #22c55e;
+            animation: pulse-dot 2s infinite;
+        }
+
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.6; transform: scale(1.3); }
+        }
+
+        .live-label {
+            font-size: 0.72rem;
+            font-weight: 600;
+            color: #22c55e;
+        }
+
+        /* ── SECTIONS ────────────────────────────────────── */
+        .content-area {
+            padding: 1.75rem 2rem;
+            flex: 1;
+        }
+
+        .section { display: none; }
+        .section.active { display: block; }
+
+        /* ── KPI CARDS ───────────────────────────────────── */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .kpi-card {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 1rem;
+            padding: 1.25rem 1.25rem 1rem;
+            position: relative;
+            overflow: hidden;
+            transition: box-shadow 0.2s, transform 0.2s;
+        }
+
+        .kpi-card:hover {
+            box-shadow: 0 8px 32px rgba(0,0,0,0.07);
+            transform: translateY(-2px);
+        }
+
+        .kpi-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 3px;
+            border-radius: 1rem 1rem 0 0;
+        }
+
+        .kpi-card.blue::before  { background: linear-gradient(90deg,#3b82f6,#06b6d4); }
+        .kpi-card.green::before { background: linear-gradient(90deg,#22c55e,#10b981); }
+        .kpi-card.red::before   { background: linear-gradient(90deg,#ef4444,#f97316); }
+        .kpi-card.amber::before { background: linear-gradient(90deg,#f59e0b,#eab308); }
+
+        .kpi-icon {
+            width: 36px; height: 36px;
+            border-radius: 0.6rem;
+            display: flex; align-items: center; justify-content: center;
+            margin-bottom: 0.85rem;
+        }
+
+        .kpi-icon.blue  { background: #eff6ff; }
+        .kpi-icon.green { background: #f0fdf4; }
+        .kpi-icon.red   { background: #fef2f2; }
+        .kpi-icon.amber { background: #fffbeb; }
+
+        .kpi-label {
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: #94a3b8;
+            margin-bottom: 0.3rem;
+        }
+
+        .kpi-value {
+            font-size: 1.75rem;
+            font-weight: 800;
+            color: #0f172a;
+            letter-spacing: -0.03em;
+            line-height: 1;
+        }
+
+        .kpi-sub {
+            font-size: 0.68rem;
+            color: #94a3b8;
+            margin-top: 0.35rem;
+        }
+
+        /* ── CARDS ───────────────────────────────────────── */
+        .card {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 1rem;
+            padding: 1.25rem 1.5rem;
+            margin-bottom: 1.25rem;
+        }
+
+        .card-title {
+            font-size: 0.875rem;
+            font-weight: 700;
+            color: #0f172a;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .card-title-dot {
+            width: 6px; height: 6px;
+            border-radius: 50%;
+            background: #dc2626;
+            flex-shrink: 0;
+        }
+
+        /* ── TWO-COL ─────────────────────────────────────── */
+        .two-col {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.25rem;
+            margin-bottom: 1.25rem;
+        }
+
+        /* ── TABLE ───────────────────────────────────────── */
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.8rem;
+        }
+
+        .data-table thead th {
+            padding: 0.5rem 0.75rem;
+            text-align: left;
+            font-size: 0.65rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.07em;
+            color: #94a3b8;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        .data-table tbody tr {
+            border-bottom: 1px solid #f8fafc;
+            transition: background 0.12s;
+        }
+
+        .data-table tbody tr:hover {
+            background: #fafafa;
+        }
+
+        .data-table tbody td {
+            padding: 0.65rem 0.75rem;
+            color: #334155;
+        }
+
+        /* ── BADGES ──────────────────────────────────────── */
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.2rem 0.55rem;
+            border-radius: 999px;
+            font-size: 0.65rem;
+            font-weight: 700;
+            letter-spacing: 0.03em;
+        }
+
+        .badge-healthy      { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
+        .badge-warning      { background: #fffbeb; color: #b45309; border: 1px solid #fde68a; }
+        .badge-critical     { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+        .badge-stable       { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
+        .badge-deteriorating{ background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+
+        /* ── ALERT ITEMS ─────────────────────────────────── */
+        .alert-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.75rem;
+            padding: 0.85rem 0;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        .alert-item:last-child { border-bottom: none; }
+
+        .alert-dot {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            margin-top: 4px;
+            flex-shrink: 0;
+        }
+
+        .alert-dot.critical  { background: #ef4444; box-shadow: 0 0 0 3px #fee2e2; }
+        .alert-dot.warning   { background: #f59e0b; box-shadow: 0 0 0 3px #fef3c7; }
+
+        /* ── FEEDBACK CARDS ──────────────────────────────── */
+        .feedback-card {
+            background: #fafafa;
+            border: 1px solid #f1f5f9;
+            border-radius: 0.75rem;
+            padding: 1rem 1.1rem;
+            margin-bottom: 0.75rem;
+            transition: box-shadow 0.15s;
+        }
+
+        .feedback-card:hover {
+            box-shadow: 0 4px 16px rgba(0,0,0,0.05);
+        }
+
+        /* ── STAR COLOURS ────────────────────────────────── */
+        .stars { color: #f59e0b; letter-spacing: 1px; font-size: 0.8rem; }
+
+        /* ── SPINNING REFRESH ────────────────────────────── */
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to   { transform: rotate(360deg); }
+        }
+
+        .spinning { animation: spin 0.8s linear infinite; }
+
+        /* ── EMPTY STATE ─────────────────────────────────── */
+        .empty-state {
+            text-align: center;
+            padding: 2rem;
+            color: #94a3b8;
+            font-size: 0.8rem;
+        }
+
+        /* ── RANK CHIP ───────────────────────────────────── */
+        .rank-chip {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 24px; height: 24px;
+            border-radius: 50%;
+            font-size: 0.7rem;
+            font-weight: 800;
+        }
+
+        .rank-chip.gold   { background: #fef9c3; color: #854d0e; }
+        .rank-chip.silver { background: #f1f5f9; color: #475569; }
+        .rank-chip.bronze { background: #fef3c7; color: #92400e; }
+        .rank-chip.other  { background: #f8fafc; color: #64748b; }
+
+        /* ── SPOTLIGHT STAT ──────────────────────────────── */
+        .spotlight-stat {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.55rem 0;
+            border-bottom: 1px solid #f8fafc;
+            font-size: 0.8rem;
+        }
+
+        .spotlight-stat:last-child { border-bottom: none; }
+        .spotlight-stat .label { color: #64748b; }
+        .spotlight-stat .value { font-weight: 600; color: #0f172a; }
+
+        /* ── ALERT BADGE on nav ──────────────────────────── */
+        .nav-badge {
+            margin-left: auto;
+            font-size: 0.6rem;
+            font-weight: 700;
+            background: #fef2f2;
+            color: #dc2626;
+            border-radius: 999px;
+            padding: 0.1rem 0.45rem;
+            display: none;
+        }
+
+        /* ── SECTION QUICK-LINK ──────────────────────────── */
+        .section-link {
+            font-size: 0.68rem;
+            font-weight: 600;
+            color: #3b82f6;
+            cursor: pointer;
+            margin-left: auto;
+            padding: 0.18rem 0.55rem;
+            border-radius: 0.4rem;
+            background: #eff6ff;
+            border: none;
+            transition: background 0.15s;
+        }
+        .section-link:hover { background: #dbeafe; }
     </style>
 </head>
 <body>
-    <!-- Top Navigation -->
-    <nav class="bg-slate-900 border-b border-slate-700 px-6 py-3 flex items-center justify-between">
-        <div class="flex items-center gap-3">
-            <span class="text-2xl">🚍</span>
-            <span class="text-xl font-bold text-white">TransiPulse</span>
-        </div>
-        <div class="flex items-center gap-4">
-            <button onclick="loadDashboard()" class="text-sm text-blue-400 hover:text-blue-300">🔄 Refresh</button>
-            <span class="text-xs text-slate-400" id="lastUpdated"></span>
-        </div>
-    </nav>
 
-    <main class="max-w-7xl mx-auto px-6 py-8">
-        <!-- KPI Summary Cards -->
-        <section class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8" id="kpiCards">
-            <div class="card">
-                <div class="text-sm text-slate-400 mb-1">Total Complaints</div>
-                <div class="text-3xl font-bold" id="kpiTotal">—</div>
-                <div class="text-xs text-slate-500 mt-1">All routes</div>
-            </div>
-            <div class="card">
-                <div class="text-sm text-slate-400 mb-1">Network Rating</div>
-                <div class="text-3xl font-bold" id="kpiRating">—</div>
-                <div class="text-xs text-slate-500 mt-1">Bayesian adjusted</div>
-            </div>
-            <div class="card">
-                <div class="text-sm text-slate-400 mb-1">Critical Alerts</div>
-                <div class="text-3xl font-bold text-red-400" id="kpiCritical">—</div>
-                <div class="text-xs text-slate-500 mt-1">Deteriorating routes</div>
-            </div>
-            <div class="card">
-                <div class="text-sm text-slate-400 mb-1">Top Issue</div>
-                <div class="text-3xl font-bold" id="kpiTopIssue">—</div>
-                <div class="text-xs text-slate-500 mt-1">Network-wide</div>
-            </div>
-        </section>
+    <!-- ══════════════════════════════════════════════════
+         SIDEBAR
+    ══════════════════════════════════════════════════ -->
+    <aside id="sidebar">
 
-        <!-- Two Column Layout -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-            <!-- Route Rankings -->
-            <div class="card">
-                <h2 class="text-lg font-semibold mb-4">Route Rankings</h2>
-                <div class="overflow-x-auto">
-                    <table class="w-full text-sm" id="rankingsTable">
+        <!-- Logo -->
+        <div class="sidebar-logo">
+            <img src="/static/logo.png" alt="TransiPulse Logo">
+            <div>
+                <div class="sidebar-brand">Transi<span>Pulse</span></div>
+            </div>
+        </div>
+
+        <!-- Nav -->
+        <div style="flex:1; overflow-y:auto; padding-top:0.5rem;">
+
+            <div class="sidebar-section-label">Overview</div>
+
+            <button class="nav-item active" id="nav-overview" onclick="showSection('overview')">
+                <svg class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="7" height="7" rx="1"/>
+                    <rect x="14" y="3" width="7" height="7" rx="1"/>
+                    <rect x="3" y="14" width="7" height="7" rx="1"/>
+                    <rect x="14" y="14" width="7" height="7" rx="1"/>
+                </svg>
+                Dashboard
+            </button>
+
+            <div class="sidebar-section-label">Analytics</div>
+
+            <button class="nav-item" id="nav-routes" onclick="showSection('routes')">
+                <svg class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path d="M3 17l4-8 4 4 4-6 4 10"/>
+                </svg>
+                Route Rankings
+            </button>
+
+            <button class="nav-item" id="nav-alerts" onclick="showSection('alerts')">
+                <svg class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+                    <line x1="12" y1="9" x2="12" y2="13"/>
+                    <line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+                Alerts
+                <span class="nav-badge" id="alertNavBadge">0</span>
+            </button>
+
+            <button class="nav-item" id="nav-heatmap" onclick="showSection('heatmap')">
+                <svg class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="4" width="18" height="16" rx="2"/>
+                    <path d="M7 10h2m4 0h2M7 14h2m4 0h2"/>
+                </svg>
+                Heatmap
+            </button>
+
+            <button class="nav-item" id="nav-spotlight" onclick="showSection('spotlight')">
+                <svg class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"/>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                </svg>
+                Route Spotlight
+            </button>
+
+            <div class="sidebar-section-label">Feedback</div>
+
+            <button class="nav-item" id="nav-feedback" onclick="showSection('feedback')">
+                <svg class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
+                </svg>
+                Feedback Feed
+            </button>
+
+            <button class="nav-item" id="nav-qr" onclick="showSection('qr'); generateQR()">
+                <svg class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="7" height="7" rx="1"/>
+                    <rect x="14" y="3" width="7" height="7" rx="1"/>
+                    <rect x="3" y="14" width="7" height="7" rx="1"/>
+                    <path d="M14 14h3m4 0v3m0 4h-7v-4m4 0v4"/>
+                </svg>
+                QR Generator
+            </button>
+
+            <div class="sidebar-section-label">AI Engine</div>
+
+            <button class="nav-item" id="nav-ai" onclick="showSection('ai')">
+                <svg class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path d="M12 2a4 4 0 014 4v1h1a3 3 0 010 6h-1v1a4 4 0 01-8 0v-1H7a3 3 0 010-6h1V6a4 4 0 014-4z"/>
+                    <circle cx="9" cy="12" r="1" fill="currentColor"/>
+                    <circle cx="15" cy="12" r="1" fill="currentColor"/>
+                </svg>
+                Ollama AI
+            </button>
+
+        </div>
+
+        <!-- Footer -->
+        <div class="sidebar-footer">
+            <button class="refresh-btn" onclick="refreshDashboard()">
+                <svg id="refreshIcon" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                    <path d="M1 4v6h6M23 20v-6h-6"/>
+                    <path d="M20.49 9A9 9 0 005.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 013.51 15"/>
+                </svg>
+                Refresh Data
+            </button>
+            <div class="last-updated" id="lastUpdated">Not yet loaded</div>
+        </div>
+
+    </aside>
+
+
+    <!-- ══════════════════════════════════════════════════
+         MAIN
+    ══════════════════════════════════════════════════ -->
+    <div id="main">
+
+        <!-- Top Bar -->
+        <header id="topbar">
+            <div>
+                <div class="topbar-title" id="topbarTitle">Dashboard Overview</div>
+                <div class="topbar-subtitle">Real-time operations analytics</div>
+            </div>
+            <div class="topbar-right">
+                <div class="live-dot"></div>
+                <span class="live-label">Live</span>
+            </div>
+        </header>
+
+        <!-- Content -->
+        <div class="content-area">
+
+
+            <!-- ══════════════════════════════════════════
+                 SECTION: OVERVIEW
+            ══════════════════════════════════════════ -->
+            <div class="section active" id="section-overview">
+
+                <!-- KPI Cards -->
+                <div class="kpi-grid">
+
+                    <div class="kpi-card blue">
+                        <div class="kpi-icon blue">
+                            <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="#3b82f6" stroke-width="2">
+                                <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
+                                <circle cx="9" cy="7" r="4"/>
+                                <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/>
+                            </svg>
+                        </div>
+                        <div class="kpi-label">Total Feedback</div>
+                        <div class="kpi-value" id="kpiTotal">—</div>
+                        <div class="kpi-sub">All routes combined</div>
+                    </div>
+
+                    <div class="kpi-card green">
+                        <div class="kpi-icon green">
+                            <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="#22c55e" stroke-width="2">
+                                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                            </svg>
+                        </div>
+                        <div class="kpi-label">Network Rating</div>
+                        <div class="kpi-value" id="kpiRating">—</div>
+                        <div class="kpi-sub">Bayesian adjusted</div>
+                    </div>
+
+                    <div class="kpi-card red">
+                        <div class="kpi-icon red">
+                            <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="#ef4444" stroke-width="2">
+                                <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+                                <line x1="12" y1="9" x2="12" y2="13"/>
+                                <line x1="12" y1="17" x2="12.01" y2="17"/>
+                            </svg>
+                        </div>
+                        <div class="kpi-label">Critical Alerts</div>
+                        <div class="kpi-value" id="kpiCritical">—</div>
+                        <div class="kpi-sub">Deteriorating routes</div>
+                    </div>
+
+                    <div class="kpi-card amber">
+                        <div class="kpi-icon amber">
+                            <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="#f59e0b" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"/>
+                                <line x1="12" y1="8" x2="12" y2="12"/>
+                                <line x1="12" y1="16" x2="12.01" y2="16"/>
+                            </svg>
+                        </div>
+                        <div class="kpi-label">Top Issue</div>
+                        <div class="kpi-value" style="font-size:1.1rem;" id="kpiTopIssue">—</div>
+                        <div class="kpi-sub">Network-wide</div>
+                    </div>
+
+                </div>
+
+                <!-- Route Health Summary (full width, links to detailed section) -->
+                <div class="card">
+                    <div class="card-title">
+                        <div class="card-title-dot"></div>
+                        Route Health
+                        <button class="section-link" onclick="showSection('routes')">Full Rankings</button>
+                    </div>
+                    <table class="data-table">
                         <thead>
-                            <tr class="text-slate-400 border-b border-slate-700">
-                                <th class="text-left py-2">Rank</th>
-                                <th class="text-left py-2">Route</th>
-                                <th class="text-left py-2">Rating</th>
-                                <th class="text-left py-2">Status</th>
-                                <th class="text-left py-2">Issues</th>
+                            <tr>
+                                <th>#</th>
+                                <th>Route</th>
+                                <th>Rating</th>
+                                <th>Status</th>
+                                <th>Top Issue</th>
                             </tr>
                         </thead>
                         <tbody id="rankingsBody"></tbody>
                     </table>
                 </div>
+
+                <!-- Active Alerts — compact, hidden when none -->
+                <div class="card" id="overviewAlertsCard" style="display:none;">
+                    <div class="card-title">
+                        <div class="card-title-dot" style="background:#f59e0b;"></div>
+                        Active Alerts
+                        <button class="section-link" onclick="showSection('alerts')">View All</button>
+                    </div>
+                    <div id="deteriorationList"></div>
+                </div>
+
             </div>
 
-            <!-- Deterioration Alerts -->
-            <div class="card">
-                <h2 class="text-lg font-semibold mb-4">Deterioration Alerts</h2>
-                <div id="deteriorationList"></div>
-            </div>
-        </div>
 
-        <!-- Heatmap -->
-        <div class="card mb-8">
-            <h2 class="text-lg font-semibold mb-4">Temporal Heatmap — Complaint Intensity by Hour</h2>
-            <canvas id="heatmapChart" height="120"></canvas>
-        </div>
-
-        <!-- Route Detail Spotlight -->
-        <div class="card mb-8" id="routeSpotlight">
-            <h2 class="text-lg font-semibold mb-4">Route 42 — Case Study Spotlight</h2>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div id="spotlightDetails"></div>
-                <div id="spotlightChart">
-                    <canvas id="routeDetailChart" height="200"></canvas>
+            <!-- ══════════════════════════════════════════
+                 SECTION: ROUTE RANKINGS
+            ══════════════════════════════════════════ -->
+            <div class="section" id="section-routes">
+                <div class="card">
+                    <div class="card-title">
+                        <div class="card-title-dot"></div>
+                        Full Route Rankings
+                    </div>
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Route ID</th>
+                                <th>Bayesian Rating</th>
+                                <th>Health Status</th>
+                                <th>Top Issue</th>
+                                <th>Complaints</th>
+                            </tr>
+                        </thead>
+                        <tbody id="fullRankingsBody"></tbody>
+                    </table>
                 </div>
             </div>
-        </div>
 
-        <!-- Categorized Feedback Feed -->
-        <div class="card">
-            <h2 class="text-lg font-semibold mb-4">Recent AI-Classified Feedback</h2>
-            <div id="feedbackFeed" class="space-y-3"></div>
-        </div>
-    </main>
+
+            <!-- ══════════════════════════════════════════
+                 SECTION: ALERTS
+            ══════════════════════════════════════════ -->
+            <div class="section" id="section-alerts">
+                <div class="card">
+                    <div class="card-title">
+                        <div class="card-title-dot" style="background:#f59e0b;"></div>
+                        Deterioration Alerts
+                    </div>
+                    <div id="fullAlertsList"></div>
+                </div>
+            </div>
+
+
+            <!-- ══════════════════════════════════════════
+                 SECTION: HEATMAP
+            ══════════════════════════════════════════ -->
+            <div class="section" id="section-heatmap">
+                <div class="card">
+                    <div class="card-title">
+                        <div class="card-title-dot" style="background:#06b6d4;"></div>
+                        Temporal Heatmap — Complaint Intensity by Hour
+                    </div>
+                    <canvas id="heatmapChart" height="110"></canvas>
+                </div>
+            </div>
+
+
+            <!-- ══════════════════════════════════════════
+                 SECTION: ROUTE SPOTLIGHT
+            ══════════════════════════════════════════ -->
+            <div class="section" id="section-spotlight">
+                <div class="card">
+                    <div class="card-title">
+                        <div class="card-title-dot" style="background:#8b5cf6;"></div>
+                        Route 42 — Case Study Spotlight
+                    </div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;">
+                        <div id="spotlightDetails"></div>
+                        <canvas id="routeDetailChart" height="200"></canvas>
+                    </div>
+                </div>
+            </div>
+
+
+            <!-- ══════════════════════════════════════════
+                 SECTION: FEEDBACK FEED
+            ══════════════════════════════════════════ -->
+            <div class="section" id="section-feedback">
+                <div class="card">
+                    <div class="card-title">
+                        <div class="card-title-dot" style="background:#3b82f6;"></div>
+                        AI-Classified Feedback Feed
+                        <span style="margin-left:auto;font-size:0.7rem;color:#94a3b8;font-weight:500;">Latest 20 entries</span>
+                    </div>
+                    <div id="feedbackFeed"></div>
+                </div>
+            </div>
+
+
+            <!-- ══════════════════════════════════════════
+                 SECTION: AI ENGINE
+            ══════════════════════════════════════════ -->
+            <div class="section" id="section-ai">
+
+                <!-- Status Card -->
+                <div class="card" style="margin-bottom:1.25rem;">
+                    <div class="card-title">
+                        <div class="card-title-dot" style="background:#8b5cf6;"></div>
+                        Ollama AI Engine Status
+                        <button onclick="loadAIStatus()" style="margin-left:auto;font-size:0.7rem;color:#8b5cf6;background:none;border:none;cursor:pointer;font-weight:600;">Refresh</button>
+                    </div>
+                    <div id="aiStatusCard" style="display:flex;flex-wrap:wrap;gap:1rem;align-items:flex-start;">
+                        <div style="color:#94a3b8;font-size:0.8rem;">Loading AI status...</div>
+                    </div>
+                </div>
+
+                <!-- Live Classify Playground -->
+                <div class="card">
+                    <div class="card-title">
+                        <div class="card-title-dot" style="background:#06b6d4;"></div>
+                        Live Classify Playground
+                    </div>
+                    <div style="margin-bottom:0.75rem;">
+                        <label style="font-size:0.72rem;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:0.4rem;">Commuter Comment</label>
+                        <textarea
+                            id="classifyInput"
+                            rows="3"
+                            placeholder="Type or paste a commuter comment to classify…"
+                            style="width:100%;border:1px solid #e2e8f0;border-radius:0.65rem;padding:0.75rem 1rem;font-size:0.82rem;font-family:inherit;color:#0f172a;background:#fafafa;resize:vertical;outline:none;transition:border 0.15s;"
+                            onfocus="this.style.borderColor='#8b5cf6';this.style.background='#fff'"
+                            onblur="this.style.borderColor='#e2e8f0';this.style.background='#fafafa'"
+                        ></textarea>
+                    </div>
+                    <button
+                        id="classifyBtn"
+                        onclick="classifyComment()"
+                        style="padding:0.6rem 1.5rem;background:#8b5cf6;color:#fff;border:none;border-radius:0.65rem;font-size:0.82rem;font-weight:700;cursor:pointer;transition:background 0.15s;"
+                        onmouseover="this.style.background='#7c3aed'"
+                        onmouseout="this.style.background='#8b5cf6'"
+                    >
+                        Classify with Ollama
+                    </button>
+
+                    <!-- Result -->
+                    <div id="classifyResult" style="margin-top:1rem;"></div>
+                </div>
+
+            </div>
+
+
+
+            <!-- ══════════════════════════════════════════
+                 SECTION: QR GENERATOR
+            ══════════════════════════════════════════ -->
+            <div class="section" id="section-qr">
+
+                <div style="max-width:520px;margin:0 auto;">
+
+                    <!-- Header card -->
+                    <div class="card" style="margin-bottom:1.25rem;">
+                        <div class="card-title" style="margin-bottom:0.5rem;">
+                            <div class="card-title-dot" style="background:#0ea5e9;"></div>
+                            Commuter Feedback QR Code
+                        </div>
+                        <p style="font-size:0.78rem;color:#64748b;line-height:1.6;margin:0;">
+                            Generate a scannable QR code to place on a bus or stop.
+                            When scanned, it opens the feedback form with the route and bus number pre-filled.
+                        </p>
+                    </div>
+
+                    <!-- Controls card -->
+                    <div class="card" style="margin-bottom:1.25rem;">
+                        <div style="display:flex;flex-direction:column;gap:1rem;">
+
+                            <!-- Route selector -->
+                            <div>
+                                <label style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:#64748b;display:block;margin-bottom:0.4rem;">Route</label>
+                                <div style="position:relative;">
+                                    <select id="qrRouteSelect"
+                                        onchange="generateQR()"
+                                        style="width:100%;padding:0.65rem 2.5rem 0.65rem 0.9rem;border:1px solid #e2e8f0;border-radius:0.65rem;font-size:0.85rem;font-weight:600;color:#0f172a;background:#fafafa;appearance:none;outline:none;cursor:pointer;transition:border 0.15s;"
+                                        onfocus="this.style.borderColor='#0ea5e9'"
+                                        onblur="this.style.borderColor='#e2e8f0'">
+                                        <option value="Gorakhpur to Deoria">Gorakhpur to Deoria</option>
+                                        <option value="Deoria to Gorakhpur">Deoria to Gorakhpur</option>
+                                    </select>
+                                    <div style="position:absolute;right:0.75rem;top:50%;transform:translateY(-50%);pointer-events:none;color:#64748b;">
+                                        <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path d="M19 9l-7 7-7-7"/></svg>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Bus number -->
+                            <div>
+                                <label style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:#64748b;display:block;margin-bottom:0.4rem;">Bus Number (last 4 digits)</label>
+                                <div style="position:relative;display:flex;align-items:center;">
+                                    <span style="position:absolute;left:0.8rem;font-family:monospace;font-size:0.82rem;font-weight:800;color:#475569;pointer-events:none;white-space:nowrap;">UP53 K</span>
+                                    <input
+                                        type="text"
+                                        id="qrBusDigits"
+                                        maxlength="4"
+                                        placeholder="1234"
+                                        inputmode="numeric"
+                                        oninput="generateQR()"
+                                        style="width:100%;padding:0.65rem 0.9rem 0.65rem 72px;border:1px solid #e2e8f0;border-radius:0.65rem;font-size:0.85rem;font-family:monospace;font-weight:700;color:#0f172a;background:#fafafa;outline:none;transition:border 0.15s;"
+                                        onfocus="this.style.borderColor='#0ea5e9';this.style.background='#fff'"
+                                        onblur="this.style.borderColor='#e2e8f0';this.style.background='#fafafa'"
+                                    >
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+
+                    <!-- QR Output card -->
+                    <div class="card" id="qrOutputCard" style="text-align:center;margin-bottom:1.25rem;">
+
+                        <!-- QR canvas -->
+                        <div id="qrCanvas" style="display:inline-block;padding:1rem;background:#fff;border-radius:0.75rem;border:1px solid #e2e8f0;margin-bottom:1rem;"></div>
+
+                        <!-- URL preview -->
+                        <div id="qrUrlPreview" style="font-size:0.68rem;font-family:monospace;color:#64748b;word-break:break-all;margin-bottom:1rem;padding:0.5rem 0.75rem;background:#f8fafc;border-radius:0.5rem;border:1px solid #f1f5f9;text-align:left;"></div>
+
+                        <!-- Actions -->
+                        <div style="display:flex;gap:0.75rem;justify-content:center;flex-wrap:wrap;">
+                            <button
+                                onclick="printQR()"
+                                style="display:inline-flex;align-items:center;gap:0.5rem;padding:0.6rem 1.4rem;background:#0f172a;color:#fff;border:none;border-radius:0.65rem;font-size:0.82rem;font-weight:700;cursor:pointer;transition:background 0.15s;"
+                                onmouseover="this.style.background='#1e293b'"
+                                onmouseout="this.style.background='#0f172a'">
+                                <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+                                Print QR
+                            </button>
+                            <button
+                                onclick="downloadQR()"
+                                style="display:inline-flex;align-items:center;gap:0.5rem;padding:0.6rem 1.4rem;background:#f1f5f9;color:#0f172a;border:none;border-radius:0.65rem;font-size:0.82rem;font-weight:700;cursor:pointer;transition:background 0.15s;"
+                                onmouseover="this.style.background='#e2e8f0'"
+                                onmouseout="this.style.background='#f1f5f9'">
+                                <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                                Download
+                            </button>
+                            <a
+                                id="qrOpenLink"
+                                target="_blank"
+                                style="display:inline-flex;align-items:center;gap:0.5rem;padding:0.6rem 1.4rem;background:#dbeafe;color:#1d4ed8;border:none;border-radius:0.65rem;font-size:0.82rem;font-weight:700;cursor:pointer;transition:background 0.15s;text-decoration:none;"
+                                onmouseover="this.style.background='#bfdbfe'"
+                                onmouseout="this.style.background='#dbeafe'">
+                                <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                                Preview
+                            </a>
+                        </div>
+
+                    </div>
+
+                    <!-- Tip -->
+                    <div style="font-size:0.72rem;color:#94a3b8;text-align:center;line-height:1.6;">
+                        Print and stick this QR code inside the bus or at the bus stop.<br>
+                        Commuters scan it to open the feedback form with details pre-filled.
+                    </div>
+
+                </div>
+
+            </div><!-- /section-qr -->
+
+
+        </div><!-- /content-area -->
+    </div><!-- /main -->
+
 
     <script>
         const API = '';
 
+        /* ── Section Navigation ──────────────────────────── */
+        const sectionTitles = {
+            overview  : 'Dashboard Overview',
+            routes    : 'Route Rankings',
+            alerts    : 'Deterioration Alerts',
+            heatmap   : 'Temporal Heatmap',
+            spotlight : 'Route Spotlight',
+            feedback  : 'Feedback Feed',
+            qr        : 'QR Code Generator',
+        };
+
+        function showSection(name) {
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+            document.getElementById(`section-${name}`).classList.add('active');
+            document.getElementById(`nav-${name}`).classList.add('active');
+            document.getElementById('topbarTitle').textContent = sectionTitles[name];
+        }
+
+        /* ── Data Cache ──────────────────────────────────── */
+        let _rankings    = [];
+        let _deterioration = [];
+        let _feedbacks   = [];
+        let _heatmapDone = false;
+        let _spotlightDone = false;
+
+        /* ── Refresh Button ──────────────────────────────── */
+        function refreshDashboard() {
+            const icon = document.getElementById('refreshIcon');
+            icon.classList.add('spinning');
+            loadDashboard().finally(() => icon.classList.remove('spinning'));
+        }
+
+        /* ── Main Loader ─────────────────────────────────── */
         async function loadDashboard() {
             try {
-                // Load rankings
+                /* Rankings */
                 const res = await fetch(`${API}/api/v1/analytics/rankings`);
-                let rankings = [];
                 if (res.ok) {
-                    rankings = await res.json();
-                    renderRankings(rankings);
+                    _rankings = await res.json();
+                    renderRankings(_rankings);
                 }
 
-                // Load deterioration
+                /* Deterioration */
                 const detRes = await fetch(`${API}/api/v1/analytics/deterioration`);
-                let deterioration = [];
                 if (detRes.ok) {
-                    deterioration = await detRes.json();
-                    renderDeterioration(deterioration);
+                    _deterioration = await detRes.json();
+                    renderDeterioration(_deterioration);
                 }
 
-                // Load heatmap
-                const heatRes = await fetch(`${API}/api/v1/analytics/temporal-heatmap`);
-                if (heatRes.ok) {
-                    const heatmap = await heatRes.json();
-                    renderHeatmap(heatmap);
+                /* Heatmap (draw once) */
+                if (!_heatmapDone) {
+                    const heatRes = await fetch(`${API}/api/v1/analytics/temporal-heatmap`);
+                    if (heatRes.ok) {
+                        renderHeatmap(await heatRes.json());
+                        _heatmapDone = true;
+                    }
                 }
 
-                // Load route 42 summary
-                const sumRes = await fetch(`${API}/api/v1/routes/Route 42/summary`);
-                if (sumRes.ok) {
-                    const summary = await sumRes.json();
-                    renderSpotlight(summary);
+                /* Spotlight (draw once) */
+                if (!_spotlightDone) {
+                    const sumRes = await fetch(`${API}/api/v1/routes/Route 42/summary`);
+                    if (sumRes.ok) {
+                        renderSpotlight(await sumRes.json());
+                        _spotlightDone = true;
+                    }
                 }
 
-                // Load recent feedback feed
+                /* Feedback */
                 const feedRes = await fetch(`${API}/api/v1/feedback/?limit=20`);
-                let feedbacks = [];
                 if (feedRes.ok) {
-                    feedbacks = await feedRes.json();
-                    renderFeedbackFeed(feedbacks);
+                    _feedbacks = await feedRes.json();
+                    renderFeedbackFeed(_feedbacks);
                 }
 
-                // Update KPI Cards
-                renderKPIs(rankings, deterioration, feedbacks);
+                renderKPIs(_rankings, _deterioration, _feedbacks);
 
-                document.getElementById('lastUpdated').textContent = new Date().toLocaleString();
+                const now = new Date();
+                document.getElementById('lastUpdated').textContent =
+                    `Updated ${now.toLocaleTimeString()}`;
+
             } catch (err) {
                 console.error('Dashboard load error:', err);
             }
         }
 
+        /* ── Rank Chip ───────────────────────────────────── */
+        function rankChip(rank) {
+            const cls = rank === 1 ? 'gold' : rank === 2 ? 'silver' : rank === 3 ? 'bronze' : 'other';
+            return `<span class="rank-chip ${cls}">${rank}</span>`;
+        }
+
+        /* ── Render: Rankings ────────────────────────────── */
         function renderRankings(rankings) {
-            const tbody = document.getElementById('rankingsBody');
-            tbody.innerHTML = rankings.map(r => {
-                const badgeClass = {
-                    'HEALTHY': 'badge-healthy',
-                    'WARNING': 'badge-warning',
-                    'CRITICAL': 'badge-critical',
-                }[r.health_badge] || 'badge-stable';
-                return `<tr class="border-b border-slate-700/50">
-                    <td class="py-2 font-bold">#${r.rank}</td>
-                    <td class="py-2 font-medium">${r.route_id}</td>
-                    <td class="py-2">${r.bayesian_rating?.toFixed(1) || '—'}</td>
-                    <td class="py-2"><span class="badge ${badgeClass}">${r.health_badge || '—'}</span></td>
-                    <td class="py-2">${r.top_issue || '—'}</td>
-                </tr>`;
-            }).join('');
+            const badgeClass = r => ({
+                'HEALTHY' : 'badge-healthy',
+                'WARNING' : 'badge-warning',
+                'CRITICAL': 'badge-critical',
+            }[r.health_badge] || 'badge-stable');
+
+            const rows = rankings.map(r => `
+                <tr>
+                    <td>${rankChip(r.rank)}</td>
+                    <td style="font-weight:600;color:#0f172a;">${r.route_id}</td>
+                    <td>${r.bayesian_rating?.toFixed(1) || '—'}</td>
+                    <td><span class="badge ${badgeClass(r)}">${r.health_badge || '—'}</span></td>
+                    <td style="color:#64748b;">${r.top_issue || '—'}</td>
+                </tr>`).join('');
+
+            document.getElementById('rankingsBody').innerHTML = rows || `<tr><td colspan="5" class="empty-state">No data</td></tr>`;
+
+            /* Full rankings table */
+            const fullRows = rankings.map(r => `
+                <tr>
+                    <td>${rankChip(r.rank)}</td>
+                    <td style="font-weight:600;color:#0f172a;">${r.route_id}</td>
+                    <td>${r.bayesian_rating?.toFixed(2) || '—'}</td>
+                    <td><span class="badge ${badgeClass(r)}">${r.health_badge || '—'}</span></td>
+                    <td style="color:#64748b;">${r.top_issue || '—'}</td>
+                    <td>${r.complaint_count ?? '—'}</td>
+                </tr>`).join('');
+
+            document.getElementById('fullRankingsBody').innerHTML = fullRows || `<tr><td colspan="6" class="empty-state">No data</td></tr>`;
         }
 
+        /* ── Render: Deterioration ───────────────────────── */
         function renderDeterioration(deterioration) {
-            const container = document.getElementById('deteriorationList');
-            if (!deterioration.length) {
-                container.innerHTML = '<p class="text-slate-400 text-sm">No active deterioration alerts.</p>';
-                return;
+            const buildHTML = (det, compact) => det.map(d => {
+                const isCrit = d.deterioration_status === 'CRITICAL';
+                return `
+                    <div class="alert-item">
+                        <div class="alert-dot ${isCrit ? 'critical' : 'warning'}"></div>
+                        <div style="flex:1;">
+                            <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:${compact ? '0' : '0.25rem'};">
+                                <span style="font-weight:600;font-size:0.82rem;color:#0f172a;">${d.route_id}</span>
+                                <span class="badge ${isCrit ? 'badge-critical' : 'badge-warning'}">${d.deterioration_status}</span>
+                            </div>
+                            ${compact ? '' : `<div style="font-size:0.72rem;color:#64748b;">${d.recommendation || 'Monitor closely.'}</div>`}
+                        </div>
+                    </div>`;
+            }).join('') || `<div class="empty-state">No active deterioration alerts.</div>`;
+
+            /* Overview: compact (route + status badge only, no recommendation) */
+            document.getElementById('deteriorationList').innerHTML  = buildHTML(deterioration, true);
+            /* Alerts section: full detail with recommendation */
+            document.getElementById('fullAlertsList').innerHTML     = buildHTML(deterioration, false);
+
+            /* Show/hide the overview alerts card */
+            const alertCard = document.getElementById('overviewAlertsCard');
+            alertCard.style.display = deterioration.length > 0 ? 'block' : 'none';
+
+            /* Sidebar badge */
+            const badge = document.getElementById('alertNavBadge');
+            if (deterioration.length > 0) {
+                badge.textContent = deterioration.length;
+                badge.style.display = 'inline-flex';
+            } else {
+                badge.style.display = 'none';
             }
-            container.innerHTML = deterioration.map(d => `
-                <div class="flex items-center justify-between py-3 border-b border-slate-700/50">
-                    <div>
-                        <span class="font-medium">${d.route_id}</span>
-                        <span class="badge ${d.deterioration_status === 'CRITICAL' ? 'badge-critical' : 'badge-deteriorating'} ml-2">${d.deterioration_status}</span>
-                    </div>
-                    <div class="text-sm text-slate-400">${d.recommendation || ''}</div>
-                </div>
-            `).join('');
         }
 
+        /* ── Render: Heatmap ─────────────────────────────── */
         function renderHeatmap(heatmap) {
-            const ctx = document.getElementById('heatmapChart').getContext('2d');
+            const ctx   = document.getElementById('heatmapChart').getContext('2d');
             const hours = Array.from({length: 24}, (_, i) => `${i}:00`);
-            const data = new Array(24).fill(0);
+            const data  = new Array(24).fill(0);
             if (heatmap.cells) {
                 heatmap.cells.forEach(c => { if (c.hour < 24) data[c.hour] = c.complaint_count; });
             }
-
             new Chart(ctx, {
                 type: 'bar',
                 data: {
                     labels: hours,
                     datasets: [{
                         label: 'Complaints',
-                        data: data,
-                        backgroundColor: data.map(v => v > 10 ? '#ef4444' : v > 5 ? '#f59e0b' : '#3b82f6'),
-                        borderRadius: 4,
+                        data,
+                        backgroundColor: data.map(v =>
+                            v > 10 ? '#ef4444' :
+                            v > 5  ? '#f59e0b' :
+                                     '#3b82f6'),
+                        borderRadius: 6,
+                        borderSkipped: false,
                     }]
                 },
                 options: {
                     plugins: { legend: { display: false } },
                     scales: {
-                        x: { ticks: { color: '#94a3b8', maxTicksLimit: 24 }, grid: { color: '#1e293b' } },
-                        y: { ticks: { color: '#94a3b8' }, grid: { color: '#1e293b' }, beginAtZero: true },
+                        x: { ticks: { color: '#94a3b8', maxTicksLimit: 24 }, grid: { color: '#f1f5f9' } },
+                        y: { ticks: { color: '#94a3b8' }, grid: { color: '#f1f5f9' }, beginAtZero: true },
                     },
                 }
             });
         }
 
+        /* ── Render: Spotlight ───────────────────────────── */
         function renderSpotlight(summary) {
-            const details = document.getElementById('spotlightDetails');
-            details.innerHTML = `
-                <div class="space-y-3">
-                    <div><span class="text-slate-400">Overall Rating:</span> <span class="text-2xl font-bold">${summary.overall_rating}</span></div>
-                    <div><span class="text-slate-400">Top Issue:</span> ${summary.top_issue || '—'}</div>
-                    <div><span class="text-slate-400">Second Issue:</span> ${summary.second_issue || '—'}</div>
-                    <div><span class="text-slate-400">Worst Period:</span> <span class="font-medium text-red-400">${summary.worst_period || '—'}</span></div>
-                    <div><span class="text-slate-400">Complaints This Month:</span> ${summary.complaints_this_month}</div>
-                    <div><span class="text-slate-400">Status:</span> <span class="badge ${summary.deterioration_status.includes('DETERIORATING') || summary.deterioration_status === 'CRITICAL' ? 'badge-critical' : 'badge-stable'}">${summary.deterioration_status}</span></div>
-                    <div class="mt-4 p-3 bg-slate-800 rounded-lg">
-                        <div class="text-sm font-medium mb-1">🤖 Recommendation</div>
-                        <div class="text-sm text-slate-300">${summary.recommendation || 'No recommendation available.'}</div>
+            const isBad = s => s?.includes('DETERIORATING') || s === 'CRITICAL';
+            document.getElementById('spotlightDetails').innerHTML = `
+                <div>
+                    <div class="spotlight-stat">
+                        <span class="label">Overall Rating</span>
+                        <span class="value" style="font-size:1.25rem;">${summary.overall_rating ?? '—'}</span>
                     </div>
-                </div>
-            `;
+                    <div class="spotlight-stat">
+                        <span class="label">Top Issue</span>
+                        <span class="value">${summary.top_issue || '—'}</span>
+                    </div>
+                    <div class="spotlight-stat">
+                        <span class="label">Second Issue</span>
+                        <span class="value">${summary.second_issue || '—'}</span>
+                    </div>
+                    <div class="spotlight-stat">
+                        <span class="label">Worst Period</span>
+                        <span class="value" style="color:#ef4444;">${summary.worst_period || '—'}</span>
+                    </div>
+                    <div class="spotlight-stat">
+                        <span class="label">Complaints This Month</span>
+                        <span class="value">${summary.complaints_this_month ?? '—'}</span>
+                    </div>
+                    <div class="spotlight-stat">
+                        <span class="label">Status</span>
+                        <span class="badge ${isBad(summary.deterioration_status) ? 'badge-critical' : 'badge-stable'}">${summary.deterioration_status || '—'}</span>
+                    </div>
+                    <div style="margin-top:1rem;background:#f8fafc;border:1px solid #f1f5f9;border-radius:0.75rem;padding:0.85rem;">
+                        <div style="font-size:0.72rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.4rem;">Recommendation</div>
+                        <div style="font-size:0.8rem;color:#334155;line-height:1.5;">${summary.recommendation || 'No recommendation available.'}</div>
+                    </div>
+                </div>`;
+
+            /* Mini radar/bar chart for spotlight */
+            const ctx2 = document.getElementById('routeDetailChart').getContext('2d');
+            const cats  = ['Punctuality','Cleanliness','Crowding','Driver','Overall'];
+            const vals  = [
+                summary.punctuality_rating,
+                summary.cleanliness_rating,
+                summary.crowding_rating,
+                summary.driver_rating,
+                summary.overall_rating,
+            ].map(v => v ?? 0);
+
+            new Chart(ctx2, {
+                type: 'bar',
+                data: {
+                    labels: cats,
+                    datasets: [{
+                        label: 'Rating',
+                        data: vals,
+                        backgroundColor: vals.map(v =>
+                            v >= 4  ? '#22c55e' :
+                            v >= 3  ? '#3b82f6' :
+                            v >= 2  ? '#f59e0b' :
+                                      '#ef4444'),
+                        borderRadius: 6,
+                        borderSkipped: false,
+                    }]
+                },
+                options: {
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { ticks: { color: '#94a3b8' }, grid: { color: '#f1f5f9' } },
+                        y: { ticks: { color: '#94a3b8' }, grid: { color: '#f1f5f9' }, beginAtZero: true, max: 5 },
+                    },
+                }
+            });
         }
 
+        /* ── Render: KPIs ────────────────────────────────── */
         function renderKPIs(rankings, deterioration, feedbacks) {
             document.getElementById('kpiTotal').textContent = feedbacks.length || 0;
 
-            const avgRating = rankings.length ? (rankings.reduce((acc, r) => acc + (r.bayesian_rating || 0), 0) / rankings.length).toFixed(1) : '—';
-            document.getElementById('kpiRating').textContent = avgRating !== '—' ? `${avgRating} / 5` : '—';
+            const avg = rankings.length
+                ? (rankings.reduce((a, r) => a + (r.bayesian_rating || 0), 0) / rankings.length).toFixed(1)
+                : '—';
+            document.getElementById('kpiRating').textContent = avg !== '—' ? `${avg} / 5` : '—';
 
-            const criticalCount = deterioration.filter(d => d.deterioration_status === 'CRITICAL' || d.deterioration_status === 'DETERIORATING').length;
-            document.getElementById('kpiCritical').textContent = criticalCount;
+            const crit = deterioration.filter(d =>
+                d.deterioration_status === 'CRITICAL' ||
+                d.deterioration_status === 'DETERIORATING').length;
+            document.getElementById('kpiCritical').textContent = crit;
 
-            const catCounts = {};
+            const cats = {};
             feedbacks.forEach(f => {
-                if (f.primary_category) catCounts[f.primary_category] = (catCounts[f.primary_category] || 0) + 1;
+                if (f.primary_category) cats[f.primary_category] = (cats[f.primary_category] || 0) + 1;
             });
-            let topCat = '—';
-            let maxCount = 0;
-            for (const [cat, cnt] of Object.entries(catCounts)) {
-                if (cnt > maxCount) { maxCount = cnt; topCat = cat; }
+            let top = '—', max = 0;
+            for (const [cat, cnt] of Object.entries(cats)) {
+                if (cnt > max) { max = cnt; top = cat; }
             }
-            document.getElementById('kpiTopIssue').textContent = topCat;
+            document.getElementById('kpiTopIssue').textContent = top;
+        }
+
+        /* ── Render: Feedback Card ───────────────────────── */
+        function feedbackCardHTML(f) {
+            const dateStr = f.created_at ? new Date(f.created_at).toLocaleString() : 'Just now';
+            const stars   = '★'.repeat(Math.max(0, Math.round(f.overall_rating || 0)));
+            const empty   = '★'.repeat(Math.max(0, 5 - Math.round(f.overall_rating || 0)));
+            const catBadge = f.primary_category
+                ? `<span class="badge badge-stable" style="font-size:0.6rem;">${f.primary_category}</span>`
+                : '';
+            const sevBadge = f.severity
+                ? `<span class="badge ${f.severity === 'Critical' || f.severity === 'High' ? 'badge-critical' : 'badge-warning'}" style="font-size:0.6rem;">${f.severity}</span>`
+                : '';
+
+            return `
+                <div class="feedback-card">
+                    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;margin-bottom:0.5rem;">
+                        <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
+                            <span style="font-weight:700;font-size:0.82rem;color:#0f172a;">${f.route_id || 'General'}</span>
+                            <span class="stars">${stars}<span style="color:#e2e8f0;">${empty}</span></span>
+                            ${catBadge}${sevBadge}
+                        </div>
+                        <span style="font-size:0.65rem;color:#94a3b8;">${dateStr}</span>
+                    </div>
+                    <div style="font-size:0.8rem;color:#334155;line-height:1.5;margin-bottom:0.5rem;">
+                        ${f.raw_comment || '<span style="color:#94a3b8;font-style:italic;">No comment provided</span>'}
+                    </div>
+                    <div style="display:flex;flex-wrap:wrap;gap:0.75rem;font-size:0.68rem;color:#64748b;padding-top:0.4rem;border-top:1px solid #f1f5f9;">
+                        ${f.stop_name ? `<span>Stop: <strong style="font-weight:600;color:#334155;">${f.stop_name}</strong></span>` : ''}
+                        ${f.bus_id    ? `<span>Bus: <strong style="font-weight:600;color:#334155;">${f.bus_id}</strong></span>` : ''}
+                        <span>Channel: <strong style="font-weight:600;color:#334155;">${f.channel || 'WEB'}</strong></span>
+                        ${f.sentiment ? `<span>Sentiment: <strong style="font-weight:600;color:#334155;">${f.sentiment}</strong></span>` : ''}
+                    </div>
+                </div>`;
         }
 
         function renderFeedbackFeed(feedbacks) {
-            const container = document.getElementById('feedbackFeed');
-            if (!feedbacks || !feedbacks.length) {
-                container.innerHTML = '<p class="text-slate-400 text-sm py-4 text-center">No commuter feedback recorded yet.</p>';
-                return;
-            }
-            container.innerHTML = feedbacks.map(f => {
-                const dateStr = f.created_at ? new Date(f.created_at).toLocaleString() : 'Just now';
-                const catBadge = f.primary_category ? `<span class="badge bg-slate-800 text-blue-300 border border-blue-500/30 ml-2">${f.primary_category}</span>` : '';
-                const sevBadge = f.severity ? `<span class="badge ${f.severity === 'Critical' || f.severity === 'High' ? 'badge-critical' : 'badge-stable'} ml-1">${f.severity}</span>` : '';
-                const stars = '★'.repeat(Math.round(f.overall_rating || 5));
-
-                return `
-                    <div class="p-4 bg-slate-800/80 border border-slate-700/60 rounded-xl space-y-2">
-                        <div class="flex items-center justify-between flex-wrap gap-2">
-                            <div class="flex items-center flex-wrap gap-1">
-                                <span class="font-bold text-white">${f.route_id || 'General Route'}</span>
-                                <span class="text-xs text-yellow-400 ml-2 font-mono">${stars} ${f.overall_rating ? f.overall_rating.toFixed(1) : ''}</span>
-                                ${catBadge}
-                                ${sevBadge}
-                            </div>
-                            <span class="text-xs text-slate-400">${dateStr}</span>
-                        </div>
-                        <div class="text-sm text-slate-200">${f.raw_comment || '<span class="text-slate-400 italic">No text comment provided</span>'}</div>
-                        <div class="text-xs text-slate-400 flex flex-wrap gap-4 pt-1 border-t border-slate-700/40">
-                            ${f.stop_name ? `<span>📍 ${f.stop_name}</span>` : ''}
-                            ${f.bus_id ? `<span>🚌 Bus ${f.bus_id}</span>` : ''}
-                            <span>📱 Channel: ${f.channel || 'WEB'}</span>
-                            ${f.sentiment ? `<span>😊 Sentiment: ${f.sentiment}</span>` : ''}
-                        </div>
-                    </div>
-                `;
-            }).join('');
+            const el = document.getElementById('feedbackFeed');
+            el.innerHTML = feedbacks?.length
+                ? feedbacks.map(feedbackCardHTML).join('')
+                : `<div class="empty-state">No commuter feedback recorded yet.</div>`;
         }
 
-        // Initial load
+
+        /* ── Section Nav: register AI ────────────────────── */
+        sectionTitles['ai'] = 'Ollama AI Engine';
+
+        /* ── AI Status ───────────────────────────────────── */
+        async function loadAIStatus() {
+            const card = document.getElementById('aiStatusCard');
+            card.innerHTML = '<div style="color:#94a3b8;font-size:0.8rem;">Probing Ollama...</div>';
+            try {
+                const res = await fetch(`${API}/api/v1/ai/status`);
+                const d   = await res.json();
+                const online   = d.status === 'online';
+                const hasModel = d.model_available;
+                const statusPill = online
+                    ? `<span style="display:inline-flex;align-items:center;gap:0.35rem;background:#f0fdf4;color:#15803d;border:1px solid #bbf7d0;border-radius:999px;padding:0.25rem 0.7rem;font-size:0.7rem;font-weight:700;"><span style="width:7px;height:7px;border-radius:50%;background:#22c55e;"></span> Online</span>`
+                    : `<span style="display:inline-flex;align-items:center;gap:0.35rem;background:#fef2f2;color:#b91c1c;border:1px solid #fecaca;border-radius:999px;padding:0.25rem 0.7rem;font-size:0.7rem;font-weight:700;"><span style="width:7px;height:7px;border-radius:50%;background:#ef4444;"></span> Offline</span>`;
+                const modelPill = hasModel
+                    ? `<span style="background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;border-radius:999px;padding:0.2rem 0.6rem;font-size:0.7rem;font-weight:700;">Model ready</span>`
+                    : `<span style="background:#fffbeb;color:#b45309;border:1px solid #fde68a;border-radius:999px;padding:0.2rem 0.6rem;font-size:0.7rem;font-weight:700;">Model not pulled</span>`;
+                const modelsList = (d.installed_models || []).length
+                    ? d.installed_models.map(m => `<span style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:0.4rem;padding:0.2rem 0.55rem;font-size:0.7rem;font-family:monospace;color:#334155;">${m}</span>`).join('')
+                    : '<span style="color:#94a3b8;font-size:0.75rem;">No models installed</span>';
+                card.innerHTML = `
+                    <div style="flex:1;min-width:200px;">
+                        <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.75rem;">${statusPill}${modelPill}</div>
+                        <div style="display:grid;grid-template-columns:auto 1fr;gap:0.3rem 0.75rem;font-size:0.78rem;">
+                            <span style="color:#94a3b8;">Host</span><span style="font-family:monospace;color:#334155;">${d.host}</span>
+                            <span style="color:#94a3b8;">Provider</span><span style="color:#334155;font-weight:600;">${d.ai_provider}</span>
+                            <span style="color:#94a3b8;">Configured model</span><span style="font-family:monospace;color:#334155;">${d.configured_model}</span>
+                        </div>
+                        ${d.error ? `<div style="margin-top:0.5rem;font-size:0.72rem;color:#ef4444;">Error: ${d.error}</div>` : ''}
+                    </div>
+                    <div style="flex:1;min-width:200px;">
+                        <div style="font-size:0.7rem;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.5rem;">Installed Models</div>
+                        <div style="display:flex;flex-wrap:wrap;gap:0.35rem;">${modelsList}</div>
+                        ${!hasModel && online ? `<div style="margin-top:0.75rem;background:#fffbeb;border:1px solid #fde68a;border-radius:0.6rem;padding:0.6rem 0.75rem;font-size:0.72rem;color:#92400e;"><strong>Pull model:</strong><br><code style="font-family:monospace;">ollama pull ${d.configured_model}</code></div>` : ''}
+                    </div>`;
+            } catch (e) {
+                card.innerHTML = `<div style="color:#ef4444;font-size:0.8rem;">Could not reach AI status endpoint: ${e.message}</div>`;
+            }
+        }
+
+        /* ── Live Classify ───────────────────────────────── */
+        async function classifyComment() {
+            const text = document.getElementById('classifyInput').value.trim();
+            const btn  = document.getElementById('classifyBtn');
+            const out  = document.getElementById('classifyResult');
+            if (!text) { out.innerHTML = `<div style="color:#f59e0b;font-size:0.8rem;">Please enter a comment first.</div>`; return; }
+            btn.textContent = 'Classifying...';
+            btn.disabled = true;
+            out.innerHTML = `<div style="color:#94a3b8;font-size:0.8rem;">Running inference...</div>`;
+            try {
+                const res = await fetch(`${API}/api/v1/ai/classify`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ comment: text }),
+                });
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const data = await res.json();
+                const c = data.classification;
+                const sevBg = {'Critical':'#fef2f2;color:#b91c1c;border-color:#fecaca','High':'#fff7ed;color:#c2410c;border-color:#fed7aa','Medium':'#fffbeb;color:#b45309;border-color:#fde68a','Low':'#f0fdf4;color:#15803d;border-color:#bbf7d0'}[c.severity] || '#f8fafc;color:#334155;border-color:#e2e8f0';
+                const sentBg = {'Negative':'#fef2f2;color:#b91c1c','Positive':'#f0fdf4;color:#15803d','Neutral':'#f8fafc;color:#64748b'}[c.sentiment] || '#f8fafc;color:#64748b';
+                const conf = c.model_confidence ? `${(c.model_confidence*100).toFixed(0)}%` : '-';
+                const src  = c.model_source || 'heuristic';
+                const srcColor = src === 'heuristic' ? '#64748b' : '#8b5cf6';
+                const bars = String.fromCharCode(9608).repeat(c.urgency_score||0) + String.fromCharCode(9617).repeat(5-(c.urgency_score||0));
+                out.innerHTML = `
+                    <div style="background:#fafafa;border:1px solid #e2e8f0;border-radius:0.75rem;padding:1rem 1.1rem;">
+                        <div style="display:flex;flex-wrap:wrap;gap:0.5rem;margin-bottom:0.75rem;">
+                            <span style="background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;border-radius:999px;padding:0.2rem 0.6rem;font-size:0.7rem;font-weight:700;">${c.category}</span>
+                            <span style="background:${sevBg};border:1px solid;border-radius:999px;padding:0.2rem 0.6rem;font-size:0.7rem;font-weight:700;">${c.severity}</span>
+                            <span style="background:${sentBg};border-radius:999px;padding:0.2rem 0.6rem;font-size:0.7rem;font-weight:700;">${c.sentiment}</span>
+                            <span style="margin-left:auto;font-size:0.68rem;color:${srcColor};font-weight:600;">via ${src} · ${conf} confidence</span>
+                        </div>
+                        <div style="display:grid;grid-template-columns:auto 1fr;gap:0.35rem 0.75rem;font-size:0.78rem;">
+                            <span style="color:#94a3b8;">Urgency</span><span style="font-weight:700;color:#0f172a;">${bars} ${c.urgency_score}/5</span>
+                            <span style="color:#94a3b8;">Insight</span><span style="color:#334155;">${c.actionable_summary || '-'}</span>
+                        </div>
+                    </div>`;
+            } catch (e) {
+                out.innerHTML = `<div style="color:#ef4444;font-size:0.8rem;">Classification failed: ${e.message}</div>`;
+            } finally {
+                btn.textContent = 'Classify with Ollama';
+                btn.disabled = false;
+            }
+        }
+        /* ── Boot ────────────────────────────────────────── */
         loadDashboard();
-        // Auto-refresh every 30 seconds
         setInterval(loadDashboard, 30000);
+
+
+        /* ── QR Generator ────────────────────────────────── */
+
+        let _qrCanvas = null;
+
+        function _buildFeedbackURL() {
+            const route  = document.getElementById('qrRouteSelect')?.value || '';
+            const digits = (document.getElementById('qrBusDigits')?.value || '').trim();
+            const base   = window.location.origin + '/commuter';
+            const params = new URLSearchParams();
+            if (route)  params.set('route', route);
+            if (digits) params.set('bus', digits);
+            return params.toString() ? `${base}?${params}` : base;
+        }
+
+        async function generateQR() {
+            const url = _buildFeedbackURL();
+
+            /* Update URL preview */
+            const preview = document.getElementById('qrUrlPreview');
+            if (preview) preview.textContent = url;
+
+            /* Update open link */
+            const link = document.getElementById('qrOpenLink');
+            if (link) link.href = url;
+
+            /* Render QR to canvas */
+            const container = document.getElementById('qrCanvas');
+            if (!container) return;
+            container.innerHTML = '';
+
+            const canvas = document.createElement('canvas');
+            container.appendChild(canvas);
+            _qrCanvas = canvas;
+
+            try {
+                await QRCode.toCanvas(canvas, url, {
+                    width: 200,
+                    margin: 2,
+                    color: { dark: '#0f172a', light: '#ffffff' },
+                    errorCorrectionLevel: 'M',
+                });
+            } catch (err) {
+                container.innerHTML = `<p style="color:#ef4444;font-size:0.78rem;">QR generation failed: ${err.message}</p>`;
+            }
+        }
+
+        function printQR() {
+            if (!_qrCanvas) return;
+            const url    = _buildFeedbackURL();
+            const route  = document.getElementById('qrRouteSelect')?.value || '';
+            const digits = (document.getElementById('qrBusDigits')?.value || '').trim();
+            const busLabel = digits ? `UP53 K ${digits}` : '—';
+            const dataUrl = _qrCanvas.toDataURL('image/png');
+
+            const win = window.open('', '_blank', 'width=480,height=640');
+            win.document.write(`<!DOCTYPE html><html><head><title>Feedback QR – ${route}</title>
+            <style>
+                body { font-family: 'Plus Jakarta Sans', sans-serif; display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:100vh; margin:0; background:#fff; color:#0f172a; }
+                h2 { font-size:1.1rem; font-weight:800; margin:0 0 0.25rem; }
+                p { font-size:0.75rem; color:#64748b; margin:0 0 1.25rem; }
+                img { width:200px; height:200px; border:1px solid #e2e8f0; border-radius:0.5rem; padding:0.5rem; }
+                .meta { margin-top:1rem; font-size:0.78rem; color:#475569; text-align:center; line-height:1.8; }
+                .meta strong { color:#0f172a; }
+            </style></head><body>
+            <h2>TransiPulse Feedback</h2>
+            <p>Scan to rate your journey</p>
+            <img src="${dataUrl}" alt="Feedback QR Code">
+            <div class="meta">
+                <div><strong>Route:</strong> ${route || '—'}</div>
+                <div><strong>Bus:</strong> ${busLabel}</div>
+            </div>
+            <script>window.print();<\/script>
+            </body></html>`);
+            win.document.close();
+        }
+
+        function downloadQR() {
+            if (!_qrCanvas) return;
+            const route  = document.getElementById('qrRouteSelect')?.value || 'route';
+            const digits = (document.getElementById('qrBusDigits')?.value || '').trim() || 'bus';
+            const link   = document.createElement('a');
+            link.download = `feedback-qr_${route.replace(/\s+/g, '-')}_UP53K${digits}.png`;
+            link.href = _qrCanvas.toDataURL('image/png');
+            link.click();
+        }
+
+
+        /* Pre-generate when page loads so it's ready */
+        generateQR();
+
     </script>
+
 </body>
 </html>

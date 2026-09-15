@@ -46,12 +46,14 @@ class Settings(BaseSettings):
 
     # ---- AI ----
     ai_provider: str = "ollama"  # ollama | transformers | heuristic
-    ai_model: str = "llama3.2:1b-instruct-q4_K_M"
+    ai_model: str = "gemma4:31b-cloud"        # Installed Ollama model
+    gemini_model: str = "gemini-2.0-flash-lite"  # Google Gemini fallback model
     ai_max_tokens: int = 256
     ai_temperature: float = 0.0
     ai_timeout_seconds: float = 15.0
     ai_enabled: bool = True
     ai_fallback_enabled: bool = True
+    ollama_host: str = "http://localhost:11434"  # Ollama REST base URL
 
     # ---- Security ----
     api_key: str = "transipulse-dev-key"

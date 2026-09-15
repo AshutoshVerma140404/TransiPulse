@@ -99,32 +99,86 @@ class AIService:
     # Tier 1: Local LLM (Ollama)
     # ------------------------------------------------------------------
     async def _classify_with_llm(self, comment: str) -> Optional[ClassificationResult]:
-        """Classify via local LLM (Ollama / HuggingFace)."""
+        """Classify via local LLM (Ollama first, Gemini fallback)."""
+        # Tier 1a: Ollama
         if settings.ai_provider == "ollama":
-            return await self._classify_ollama(comment)
+            result = await self._classify_ollama(comment)
+            if result:
+                return result
+            logger.debug("Ollama unavailable — trying Gemini fallback")
+
+        # Tier 1b: Google Gemini (if API key present)
+        result = await self._classify_gemini(comment)
+        if result:
+            return result
+
+        # Tier 1c: HuggingFace Transformers
         if settings.ai_provider == "transformers":
             return await self._classify_transformers(comment)
+
         return None
 
     async def _classify_ollama(self, comment: str) -> Optional[ClassificationResult]:
-        """Classify using Ollama local LLM."""
-        try:
-            import ollama  # type: ignore
+        """Classify using Ollama local LLM via async httpx REST call."""
+        import httpx
 
-            prompt = self._build_ollama_prompt(comment)
-            response = ollama.generate(
-                model=settings.ai_model,
-                prompt=prompt,
-                options={
-                    "num_predict": settings.ai_max_tokens,
-                    "temperature": settings.ai_temperature,
-                },
-                timeout=int(settings.ai_timeout_seconds),
-            )
-            result_text = response.get("response", "{}")
+        prompt = self._build_ollama_prompt(comment)
+        payload = {
+            "model": settings.ai_model,
+            "prompt": prompt,
+            "stream": False,
+            "options": {
+                "num_predict": settings.ai_max_tokens,
+                "temperature": settings.ai_temperature,
+            },
+        }
+        try:
+            async with httpx.AsyncClient(
+                base_url=settings.ollama_host,
+                timeout=settings.ai_timeout_seconds,
+            ) as client:
+                resp = await client.post("/api/generate", json=payload)
+                resp.raise_for_status()
+                result_text = resp.json().get("response", "{}")
             return self._parse_llm_response(result_text)
         except Exception as exc:
             logger.debug("Ollama classification failed: %s", exc)
+            return None
+
+    async def _classify_gemini(self, comment: str) -> Optional[ClassificationResult]:
+        """Classify using Google Gemini API when Ollama is offline."""
+        import os
+        import httpx
+
+        api_key = os.environ.get("GOOGLE_API_KEY", "").strip().strip("'\"")
+        if not api_key:
+            logger.debug("Gemini fallback skipped: GOOGLE_API_KEY not set")
+            return None
+
+        url = (
+            f"https://generativelanguage.googleapis.com/v1beta/models/"
+            f"{settings.gemini_model}:generateContent"
+        )
+        prompt = self._build_ollama_prompt(comment)  # same structured prompt
+        payload = {
+            "contents": [{"parts": [{"text": prompt}]}],
+            "generationConfig": {
+                "temperature": settings.ai_temperature,
+                "maxOutputTokens": settings.ai_max_tokens,
+            },
+        }
+        try:
+            async with httpx.AsyncClient(timeout=settings.ai_timeout_seconds) as client:
+                resp = await client.post(url, json=payload, params={"key": api_key})
+                resp.raise_for_status()
+                data = resp.json()
+                text = data["candidates"][0]["content"]["parts"][0]["text"]
+            result = self._parse_llm_response(text)
+            if result:
+                result.model_source = "gemini"
+            return result
+        except Exception as exc:
+            logger.debug("Gemini classification failed: %s", exc)
             return None
 
     async def _classify_transformers(self, comment: str) -> Optional[ClassificationResult]:
@@ -216,6 +270,50 @@ Comment: "{comment}"
         if score >= 0.4:
             return "Medium"
         return "Low"
+
+    # ------------------------------------------------------------------
+    # Ollama health probe
+    # ------------------------------------------------------------------
+    @staticmethod
+    async def probe_ollama() -> dict:
+        """Probe the local Ollama server and return status info."""
+        import os
+        import httpx
+
+        api_key = os.environ.get("GOOGLE_API_KEY", "").strip().strip("'\"")
+        gemini_available = bool(api_key)
+
+        try:
+            async with httpx.AsyncClient(
+                base_url=settings.ollama_host,
+                timeout=3.0,
+            ) as client:
+                resp = await client.get("/api/tags")
+                resp.raise_for_status()
+                data = resp.json()
+                models = [m["name"] for m in data.get("models", [])]
+                configured = settings.ai_model
+                available = configured in models
+                return {
+                    "status": "online",
+                    "host": settings.ollama_host,
+                    "configured_model": configured,
+                    "model_available": available,
+                    "installed_models": models,
+                    "gemini_fallback": gemini_available,
+                    "gemini_model": settings.gemini_model,
+                }
+        except Exception as exc:
+            return {
+                "status": "offline",
+                "host": settings.ollama_host,
+                "configured_model": settings.ai_model,
+                "model_available": False,
+                "installed_models": [],
+                "error": str(exc),
+                "gemini_fallback": gemini_available,
+                "gemini_model": settings.gemini_model,
+            }
 
     # ------------------------------------------------------------------
     # Database persistence
