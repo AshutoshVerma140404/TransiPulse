@@ -115,7 +115,7 @@ class HeuristicClassifier:
         # Category: best matching keyword set
         category_scores = {}
         for category, keywords in CATEGORY_KEYWORDS.items():
-            score = sum(1 for kw in keywords if kw.lower() in comment_lower)
+            score = sum(1 for kw in keywords if re.search(r"\b" + re.escape(kw.lower()) + r"\b", comment_lower))
             category_scores[category] = score
 
         if not any(category_scores.values()):
@@ -126,7 +126,7 @@ class HeuristicClassifier:
         # Severity: best matching severity keyword set
         severity_scores = {}
         for severity, keywords in SEVERITY_KEYWORDS.items():
-            score = sum(1 for kw in keywords if kw.lower() in comment_lower)
+            score = sum(1 for kw in keywords if re.search(r"\b" + re.escape(kw.lower()) + r"\b", comment_lower))
             severity_scores[severity] = score
 
         if not any(severity_scores.values()):

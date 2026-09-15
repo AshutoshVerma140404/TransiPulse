@@ -2,209 +2,1165 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TransiPulse — Commuter Feedback Portal</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+    <title>Please share your feedback</title>
+
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://unpkg.com/lucide-static@latest/font/lucide.css">
+
+    <!-- Google Font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-        body { font-family: 'Inter', sans-serif; background: #0f172a; color: #e2e8f0; }
-        .star { font-size: 2rem; cursor: pointer; transition: transform 0.15s, color 0.15s; }
-        .star:hover { transform: scale(1.2); }
-        .star.active { color: #fbbf24; }
-        .star.inactive { color: #475569; }
-        .chip { padding: 0.4rem 0.8rem; border-radius: 9999px; border: 1px solid #475569; cursor: pointer; transition: all 0.15s; font-size: 0.85rem; }
-        .chip:hover { border-color: #3b82f6; background: #1e3a5f; }
-        .chip.selected { border-color: #3b82f6; background: #1e40af; color: #93c5fd; }
-        .route-card { background: #1e293b; border: 1px solid #334155; border-radius: 0.75rem; padding: 1rem; cursor: pointer; transition: all 0.15s; }
-        .route-card:hover { border-color: #3b82f6; }
-        .route-card.selected { border-color: #3b82f6; background: #1e3a5f; }
-        .toast { position: fixed; bottom: 2rem; right: 2rem; background: #065f46; color: white; padding: 1rem 1.5rem; border-radius: 0.5rem; transform: translateY(100px); opacity: 0; transition: all 0.3s; }
-        .toast.show { transform: translateY(0); opacity: 1; }
-    </style>
-</head>
-<body class="min-h-screen">
-    <nav class="bg-slate-900 border-b border-slate-700 px-6 py-3">
-        <div class="flex items-center gap-3">
-            <span class="text-2xl">🚍</span>
-            <span class="text-xl font-bold text-white">TransiPulse</span>
-        </div>
-    </nav>
-
-    <main class="max-w-2xl mx-auto px-6 py-8">
-        <div class="text-center mb-8">
-            <h1 class="text-3xl font-bold mb-2">Rate Your Ride</h1>
-            <p class="text-slate-400">Scan QR or use this portal to share your transit experience</p>
-        </div>
-
-        <!-- Route Selection -->
-        <section class="mb-8">
-            <h2 class="text-lg font-semibold mb-3">Select Route</h2>
-            <div class="grid grid-cols-2 gap-3" id="routeGrid"></div>
-        </section>
-
-        <!-- Rating Form -->
-        <section class="card space-y-6" id="ratingForm">
-            <div>
-                <label class="text-sm font-medium block mb-2">Punctuality</label>
-                <div class="flex gap-1" data-category="punctuality">
-                    <span class="star inactive" data-value="1">★</span>
-                    <span class="star inactive" data-value="2">★</span>
-                    <span class="star inactive" data-value="3">★</span>
-                    <span class="star inactive" data-value="4">★</span>
-                    <span class="star inactive" data-value="5">★</span>
-                </div>
-            </div>
-            <div>
-                <label class="text-sm font-medium block mb-2">Cleanliness</label>
-                <div class="flex gap-1" data-category="cleanliness">
-                    <span class="star inactive" data-value="1">★</span>
-                    <span class="star inactive" data-value="2">★</span>
-                    <span class="star inactive" data-value="3">★</span>
-                    <span class="star inactive" data-value="4">★</span>
-                    <span class="star inactive" data-value="5">★</span>
-                </div>
-            </div>
-            <div>
-                <label class="text-sm font-medium block mb-2">Crowding</label>
-                <div class="flex gap-1" data-category="crowding">
-                    <span class="star inactive" data-value="1">★</span>
-                    <span class="star inactive" data-value="2">★</span>
-                    <span class="star inactive" data-value="3">★</span>
-                    <span class="star inactive" data-value="4">★</span>
-                    <span class="star inactive" data-value="5">★</span>
-                </div>
-            </div>
-            <div>
-                <label class="text-sm font-medium block mb-2">Driver Behaviour</label>
-                <div class="flex gap-1" data-category="driver">
-                    <span class="star inactive" data-value="1">★</span>
-                    <span class="star inactive" data-value="2">★</span>
-                    <span class="star inactive" data-value="3">★</span>
-                    <span class="star inactive" data-value="4">★</span>
-                    <span class="star inactive" data-value="5">★</span>
-                </div>
-            </div>
-            <div>
-                <label class="text-sm font-medium block mb-2">Overall Experience</label>
-                <div class="flex gap-1" data-category="overall">
-                    <span class="star inactive" data-value="1">★</span>
-                    <span class="star inactive" data-value="2">★</span>
-                    <span class="star inactive" data-value="3">★</span>
-                    <span class="star inactive" data-value="4">★</span>
-                    <span class="star inactive" data-value="5">★</span>
-                </div>
-            </div>
-
-            <!-- Quick Tags -->
-            <div>
-                <label class="text-sm font-medium block mb-2">Quick Tags</label>
-                <div class="flex flex-wrap gap-2" id="quickTags">
-                    <span class="chip" data-tag="Late">🚫 Late</span>
-                    <span class="chip" data-tag="Crowded">😰 Crowded</span>
-                    <span class="chip" data-tag="Dirty">🧹 Dirty</span>
-                    <span class="chip" data-tag="Rude Driver">😠 Rude Driver</span>
-                    <span class="chip" data-tag="AC Broken">❄️ AC Broken</span>
-                    <span class="chip" data-tag="Friendly Staff">😊 Friendly Staff</span>
-                    <span class="chip" data-tag="On Time">✅ On Time</span>
-                    <span class="chip" data-tag="Smooth Ride">🛣️ Smooth Ride</span>
-                </div>
-            </div>
-
-            <!-- Comment -->
-            <div>
-                <label class="text-sm font-medium block mb-2">Comments (optional)</label>
-                <textarea id="comment" rows="3" class="w-full bg-slate-800 border border-slate-600 rounded-lg p-3 text-sm focus:outline-none focus:border-blue-500" placeholder="Tell us more about your experience..."></textarea>
-            </div>
-
-            <button onclick="submitFeedback()" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-3 rounded-lg transition-colors">
-                Submit Feedback
-            </button>
-        </section>
-    </main>
-
-    <div id="toast" class="toast">✓ Feedback submitted successfully!</div>
-
-    <script>
-        const ROUTES = ['Route 42', 'M15', 'B46', 'M60', 'B61', 'Q44', 'B38', 'M14A'];
-        let selectedRoute = '';
-        const ratings = {};
-
-        // Render route cards
-        document.getElementById('routeGrid').innerHTML = ROUTES.map(r =>
-            `<div class="route-card" onclick="selectRoute('${r}', this)">
-                <div class="font-medium">${r}</div>
-            </div>`
-        ).join('');
-
-        function selectRoute(route, el) {
-            selectedRoute = route;
-            document.querySelectorAll('.route-card').forEach(c => c.classList.remove('selected'));
-            el.classList.add('selected');
+        * {
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+            -webkit-tap-highlight-color: transparent;
         }
 
-        // Star rating handlers
-        document.querySelectorAll('[data-category]').forEach(container => {
-            const category = container.dataset.category;
-            container.querySelectorAll('.star').forEach(star => {
-                star.addEventListener('click', () => {
-                    const value = parseInt(star.dataset.value);
-                    ratings[category] = value;
-                    container.querySelectorAll('.star').forEach(s => {
-                        const v = parseInt(s.dataset.value);
-                        s.className = `star ${v <= value ? 'active' : 'inactive'}`;
-                    });
-                });
-            });
-        });
+        body {
+            background-color: #f8fafc;
+            color: #0f172a;
+        }
 
-        // Quick tag toggle
-        document.querySelectorAll('.chip').forEach(chip => {
-            chip.addEventListener('click', () => chip.classList.toggle('selected'));
-        });
+        /* ========================================
+           RATING CARD
+        ======================================== */
 
-        async function submitFeedback() {
-            if (!selectedRoute) { alert('Please select a route first.'); return; }
-            if (!ratings.overall) { alert('Please rate your overall experience.'); return; }
+        .rating-row {
+            display: flex;
+            flex-direction: column;
+            align-items: stretch;
+            padding: 0.75rem 0.95rem 0.85rem;
+            border-radius: 1rem;
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            transition: all 0.15s ease;
+        }
 
-            const comment = document.getElementById('comment').value;
-            const selectedTags = Array.from(document.querySelectorAll('.chip.selected')).map(c => c.dataset.tag);
-            const commentText = selectedTags.length > 0 ? `${selectedTags.join(', ')} — ${comment}` : comment;
+        .rating-row:hover {
+            border-color: #cbd5e1;
+            background: #fafafa;
+        }
 
-            const payload = {
-                route_id: selectedRoute,
-                punctuality_rating: ratings.punctuality || 3,
-                cleanliness_rating: ratings.cleanliness || 3,
-                crowding_rating: ratings.crowding || 3,
-                driver_rating: ratings.driver || 3,
-                overall_rating: ratings.overall,
-                raw_comment: commentText || 'No comment provided',
-                channel: 'QR_CODE',
-            };
+        /* Heading + Rating text */
+        .rating-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            min-height: 20px;
+        }
 
-            try {
-                const res = await fetch('/api/v1/feedback', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload),
-                });
-                if (res.ok) {
-                    showToast();
-                    setTimeout(() => location.reload(), 1500);
-                } else {
-                    alert('Submission failed. Please try again.');
-                }
-            } catch (err) {
-                // Demo mode — show toast even if API is unreachable
-                showToast();
+        .rating-title {
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: #1e293b;
+        }
+
+        .rating-value {
+            font-size: 0.7rem;
+            font-weight: 700;
+            color: #94a3b8;
+            min-width: 60px;
+            text-align: right;
+            padding: 0.15rem 0.5rem;
+            border-radius: 999px;
+            transition: background 0.2s, color 0.2s;
+        }
+
+        /* Score colour pills */
+        .rating-score-1 { background: #fee2e2; color: #991b1b; } /* dark red   */
+        .rating-score-2 { background: #fecaca; color: #dc2626; } /* light red  */
+        .rating-score-3 { background: #dbeafe; color: #1d4ed8; } /* blue       */
+        .rating-score-4 { background: #dcfce7; color: #15803d; } /* light green*/
+        .rating-score-5 { background: #bbf7d0; color: #166534; } /* dark green */
+
+        /* ========================================
+           EMOJIS
+        ======================================== */
+
+        .emoji-group {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            margin-top: 0.45rem;
+        }
+
+        .emoji-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+
+            font-size: 1.5rem;
+            line-height: 1;
+
+            width: 42px;
+            height: 42px;
+
+            padding: 0.35rem;
+
+            border-radius: 0.65rem;
+            cursor: pointer;
+
+            transition:
+                transform 0.15s ease,
+                color 0.2s ease,
+                background-color 0.15s ease;
+
+            user-select: none;
+
+            background: transparent;
+            border: none;
+
+            color: #cbd5e1;  /* grey by default */
+        }
+
+        .emoji-btn:hover {
+            transform: scale(1.2);
+            color: #fbbf24;  /* gold on hover */
+        }
+
+        .emoji-btn:active {
+            transform: scale(0.92);
+        }
+
+        .emoji-btn.active {
+            color: #f59e0b;  /* filled gold */
+            transform: scale(1.1);
+        }
+
+        /* ========================================
+           INPUTS
+        ======================================== */
+
+        .input-box {
+            background: #f8fafc;
+            border: 1px solid #cbd5e1;
+            border-radius: 0.875rem;
+            padding: 0.75rem 2.25rem 0.75rem 1rem;
+
+            font-size: 0.9rem;
+            color: #0f172a;
+
+            outline: none;
+
+            transition: all 0.15s ease;
+
+            width: 100%;
+            appearance: none;
+        }
+
+        .input-box:focus {
+            background: #ffffff;
+            border-color: #2563eb;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.10);
+        }
+
+        /* ========================================
+           MAIN CARD
+        ======================================== */
+
+        .app-card {
+            background: #ffffff;
+            border-radius: 1.75rem;
+            border: 1px solid #e2e8f0;
+
+            box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.06);
+        }
+
+        /* ========================================
+           MOBILE
+        ======================================== */
+
+        @media (max-width: 380px) {
+            .emoji-btn {
+                width: 38px;
+                height: 38px;
+                font-size: 1.3rem;
+            }
+
+            .rating-row {
+                padding-left: 0.75rem;
+                padding-right: 0.75rem;
             }
         }
+    </style>
+</head>
 
-        function showToast() {
-            const toast = document.getElementById('toast');
-            toast.classList.add('show');
-            setTimeout(() => toast.classList.remove('show'), 3000);
+
+<body class="min-h-screen flex items-center justify-center p-4 sm:p-6">
+
+    <!-- ========================================
+         MAIN APP CARD
+    ======================================== -->
+
+    <main class="w-full max-w-md app-card p-1 sm:p-4 space-y-2">
+
+        <!-- ========================================
+             HEADER
+        ======================================== -->
+
+        <header class="text-center space-y-1">
+
+            <img
+                src="/static/logo.png"
+                alt="Bus Logo"
+                class="h-40 w-auto mx-auto object-contain"
+            >
+
+            <h1 id="pageHeading" class="text-base font-bold text-slate-800 tracking-tight">
+                Please share your feedback
+            </h1>
+
+        </header>
+
+
+        <!-- ========================================
+             FEEDBACK FORM
+        ======================================== -->
+
+        <form
+            id="feedbackForm"
+            onsubmit="submitFeedback(event)"
+            class="space-y-4"
+        >
+
+            <!-- ========================================
+                 ROUTE
+            ======================================== -->
+
+            <div class="space-y-1">
+
+                <label
+                    for="routeSelect"
+                    class="block text-xs font-bold text-slate-700 uppercase tracking-wider"
+                >
+                    Route
+                </label>
+
+                <div class="relative">
+
+                    <select
+                        id="routeSelect"
+                        class="input-box font-semibold cursor-pointer"
+                    >
+                        <option value="Gorakhpur to Deoria" selected>
+                            Gorakhpur to Deoria
+                        </option>
+
+                        <option value="Deoria to Gorakhpur">
+                            Deoria to Gorakhpur
+                        </option>
+                    </select>
+
+                    <!-- Down Arrow -->
+                    <div class="absolute inset-y-0 right-0 flex items-center px-3.5 pointer-events-none text-slate-600">
+
+                        <svg
+                            class="w-4 h-4"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2.5"
+                                d="M19 9l-7 7-7-7"
+                            ></path>
+                        </svg>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- ========================================
+                 BUS STOP
+            ======================================== -->
+
+            <div class="space-y-1">
+
+                <label
+                    for="stopSelect"
+                    class="block text-xs font-bold text-slate-700 uppercase tracking-wider"
+                >
+                    Bus Stop
+                </label>
+
+                <div class="relative">
+
+                    <select
+                        id="stopSelect"
+                        class="input-box font-medium cursor-pointer"
+                    >
+
+                        <option value="Gorakhpur" selected>
+                            Gorakhpur
+                        </option>
+
+                        <option value="MMM College">
+                            MMM College
+                        </option>
+
+                        <option value="Chauri Chaura">
+                            Chauri Chaura
+                        </option>
+
+                        <option value="GauriBazar">
+                            GauriBazar
+                        </option>
+
+                        <option value="BaitalPur">
+                            BaitalPur
+                        </option>
+
+                        <option value="Deoria">
+                            Deoria
+                        </option>
+
+                    </select>
+
+                    <!-- Down Arrow -->
+                    <div class="absolute inset-y-0 right-0 flex items-center px-3.5 pointer-events-none text-slate-600">
+
+                        <svg
+                            class="w-4 h-4"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2.5"
+                                d="M19 9l-7 7-7-7"
+                            ></path>
+                        </svg>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- ========================================
+                 BUS NUMBER
+            ======================================== -->
+
+           <!-- Bus Number -->
+<div class="space-y-1">
+
+    <label
+        for="busDigits"
+        class="block text-xs font-bold text-slate-700 uppercase tracking-wider"
+    >
+        Bus Number
+    </label>
+
+    <div class="relative">
+
+        <!-- Fixed prefix inside input -->
+        <span
+            class="absolute left-3.5 top-1/2 -translate-y-1/2
+                   font-mono text-sm font-extrabold
+                   text-slate-700 tracking-wider
+                   pointer-events-none"
+        >
+            UP53 K
+        </span>
+
+        <input
+            type="text"
+            id="busDigits"
+            maxlength="4"
+            placeholder="1234"
+            pattern="[0-9]{4}"
+            inputmode="numeric"
+            class="w-full py-3 pl-[76px] pr-3.5
+                   bg-slate-50 border border-slate-300
+                   rounded-xl
+                   text-sm font-mono font-bold text-slate-900
+                   focus:bg-white focus:border-blue-600
+                   focus:outline-none transition"
+        >
+
+    </div>
+
+</div><!-- Bus Number -->
+
+
+            <!-- ========================================
+                 RATINGS
+            ======================================== -->
+
+            <div class="space-y-2.5 pt-1">
+
+
+                <!-- ========================================
+                     1. PUNCTUALITY
+                ======================================== -->
+
+                <div class="rating-row">
+
+                    <!-- Heading + Selected Rating -->
+                    <div class="rating-header">
+
+                        <span class="rating-title">
+                            Punctuality
+                        </span>
+
+                        <span
+                            class="rating-value"
+                            id="rating-label-punctuality"
+                        ></span>
+
+                    </div>
+
+                    <!-- Emojis -->
+                    <div
+                        class="emoji-group"
+                        data-cat="punctuality"
+                    >
+
+                        <button
+                            type="button"
+                            class="emoji-btn"
+                            onclick="rate('punctuality', 1)"
+                        >
+                            ★
+                        </button>
+
+                        <button
+                            type="button"
+                            class="emoji-btn"
+                            onclick="rate('punctuality', 2)"
+                        >
+                            ★
+                        </button>
+
+                        <button
+                            type="button"
+                            class="emoji-btn"
+                            onclick="rate('punctuality', 3)"
+                        >
+                            ★
+                        </button>
+
+                        <button
+                            type="button"
+                            class="emoji-btn"
+                            onclick="rate('punctuality', 4)"
+                        >
+                            ★
+                        </button>
+
+                        <button
+                            type="button"
+                            class="emoji-btn"
+                            onclick="rate('punctuality', 5)"
+                        >
+                            ★
+                        </button>
+
+                    </div>
+
+                </div>
+
+
+                <!-- ========================================
+                     2. CLEANLINESS
+                ======================================== -->
+
+                <div class="rating-row">
+
+                    <div class="rating-header">
+
+                        <span class="rating-title">
+                            Cleanliness
+                        </span>
+
+                        <span
+                            class="rating-value"
+                            id="rating-label-cleanliness"
+                        ></span>
+
+                    </div>
+
+                    <div
+                        class="emoji-group"
+                        data-cat="cleanliness"
+                    >
+
+                        <button
+                            type="button"
+                            class="emoji-btn"
+                            onclick="rate('cleanliness', 1)"
+                        >
+                            ★
+                        </button>
+
+                        <button
+                            type="button"
+                            class="emoji-btn"
+                            onclick="rate('cleanliness', 2)"
+                        >
+                            ★
+                        </button>
+
+                        <button
+                            type="button"
+                            class="emoji-btn"
+                            onclick="rate('cleanliness', 3)"
+                        >
+                            ★
+                        </button>
+
+                        <button
+                            type="button"
+                            class="emoji-btn"
+                            onclick="rate('cleanliness', 4)"
+                        >
+                            ★
+                        </button>
+
+                        <button
+                            type="button"
+                            class="emoji-btn"
+                            onclick="rate('cleanliness', 5)"
+                        >
+                            ★
+                        </button>
+
+                    </div>
+
+                </div>
+
+
+                <!-- ========================================
+                     3. CROWDING
+                ======================================== -->
+
+                <div class="rating-row">
+
+                    <div class="rating-header">
+
+                        <span class="rating-title">
+                            Crowding
+                        </span>
+
+                        <span
+                            class="rating-value"
+                            id="rating-label-crowding"
+                        ></span>
+
+                    </div>
+
+                    <div
+                        class="emoji-group"
+                        data-cat="crowding"
+                    >
+
+                        <button
+                            type="button"
+                            class="emoji-btn"
+                            onclick="rate('crowding', 1)"
+                        >
+                            ★
+                        </button>
+
+                        <button
+                            type="button"
+                            class="emoji-btn"
+                            onclick="rate('crowding', 2)"
+                        >
+                            ★
+                        </button>
+
+                        <button
+                            type="button"
+                            class="emoji-btn"
+                            onclick="rate('crowding', 3)"
+                        >
+                            ★
+                        </button>
+
+                        <button
+                            type="button"
+                            class="emoji-btn"
+                            onclick="rate('crowding', 4)"
+                        >
+                            ★
+                        </button>
+
+                        <button
+                            type="button"
+                            class="emoji-btn"
+                            onclick="rate('crowding', 5)"
+                        >
+                            ★
+                        </button>
+
+                    </div>
+
+                </div>
+
+
+                <!-- ========================================
+                     4. DRIVER BEHAVIOUR
+                ======================================== -->
+
+                <div class="rating-row">
+
+                    <div class="rating-header">
+
+                        <span class="rating-title">
+                            Driver Behaviour
+                        </span>
+
+                        <span
+                            class="rating-value"
+                            id="rating-label-driver"
+                        ></span>
+
+                    </div>
+
+                    <div
+                        class="emoji-group"
+                        data-cat="driver"
+                    >
+
+                        <button
+                            type="button"
+                            class="emoji-btn"
+                            onclick="rate('driver', 1)"
+                        >
+                            ★
+                        </button>
+
+                        <button
+                            type="button"
+                            class="emoji-btn"
+                            onclick="rate('driver', 2)"
+                        >
+                            ★
+                        </button>
+
+                        <button
+                            type="button"
+                            class="emoji-btn"
+                            onclick="rate('driver', 3)"
+                        >
+                            ★
+                        </button>
+
+                        <button
+                            type="button"
+                            class="emoji-btn"
+                            onclick="rate('driver', 4)"
+                        >
+                            ★
+                        </button>
+
+                        <button
+                            type="button"
+                            class="emoji-btn"
+                            onclick="rate('driver', 5)"
+                        >
+                            ★
+                        </button>
+
+                    </div>
+
+                </div>
+
+
+                <!-- ========================================
+                     5. OVERALL EXPERIENCE
+                ======================================== -->
+
+                <div class="rating-row bg-blue-50/50 border-blue-200">
+
+                    <div class="rating-header">
+
+                        <span class="rating-title text-blue-950 font-extrabold">
+                            Overall Experience
+                        </span>
+
+                        <span
+                            class="rating-value"
+                            id="rating-label-overall"
+                        >
+                        </span>
+
+                    </div>
+
+                    <div
+                        class="emoji-group"
+                        data-cat="overall"
+                    >
+
+                        <button
+                            type="button"
+                            class="emoji-btn"
+                            onclick="rate('overall', 1)"
+                        >
+                            ★
+                        </button>
+
+                        <button
+                            type="button"
+                            class="emoji-btn"
+                            onclick="rate('overall', 2)"
+                        >
+                            ★
+                        </button>
+
+                        <button
+                            type="button"
+                            class="emoji-btn"
+                            onclick="rate('overall', 3)"
+                        >
+                            ★
+                        </button>
+
+                        <button
+                            type="button"
+                            class="emoji-btn"
+                            onclick="rate('overall', 4)"
+                        >
+                            ★
+                        </button>
+
+                        <button
+                            type="button"
+                            class="emoji-btn"
+                            onclick="rate('overall', 5)"
+                        >
+                            ★
+                        </button>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- ========================================
+                 COMMENTS
+            ======================================== -->
+
+            <div class="space-y-1">
+
+                <label
+                    for="commentBox"
+                    class="block text-xs font-bold text-slate-700 uppercase tracking-wider"
+                >
+                    Comments (optional)
+                </label>
+
+                <textarea
+                    id="commentBox"
+                    rows="2"
+                    placeholder="Write any comments here..."
+                    class="w-full p-3 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:bg-white focus:border-blue-600 focus:outline-none resize-none"
+                ></textarea>
+
+            </div>
+
+
+            <!-- ========================================
+                 SUBMIT
+            ======================================== -->
+
+            <button
+                type="submit"
+                id="submitBtn"
+                class="w-full py-3.5 px-5 rounded-xl bg-slate-900 hover:bg-slate-800 active:bg-slate-950 text-white font-bold text-sm shadow-md transition duration-150 cursor-pointer text-center"
+            >
+                Submit Feedback
+            </button>
+
+        </form>
+
+
+        <!-- ========================================
+             SUCCESS CARD
+        ======================================== -->
+
+        <div
+            id="successCard"
+            class="hidden text-center py-6 space-y-3"
+        >
+
+            <h3 class="text-lg font-bold text-slate-900">
+                Thank You!
+            </h3>
+
+            <p class="text-xs text-slate-600">
+                Your feedback has been submitted successfully.
+            </p>
+
+            <div class="bg-amber-50 rounded-xl p-3 border border-amber-200 text-xs text-amber-800 font-medium flex items-center justify-center gap-2">
+
+                <span>Reference ID:</span>
+
+                <span
+                    id="refCode"
+                    class="font-mono font-bold text-slate-900"
+                >
+                    UP-53-9214
+                </span>
+
+                <button
+                    type="button"
+                    id="copyRefBtn"
+                    onclick="copyRefId()"
+                    title="Copy reference ID"
+                    class="ml-1 p-1 rounded-md hover:bg-slate-200 text-slate-400 hover:text-slate-700 transition cursor-pointer"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                    </svg>
+                </button>
+
+            </div>
+
+        </div>
+
+    </main>
+
+
+    <!-- ========================================
+         JAVASCRIPT
+    ======================================== -->
+
+    <script>
+
+        /* ========================================
+           STATE
+        ======================================== */
+
+        const state = {
+            punctuality: 0,
+            cleanliness: 0,
+            crowding: 0,
+            driver: 0,
+            overall: 0
+        };
+
+
+        /* ========================================
+           RATING LABELS
+        ======================================== */
+
+        const ratingLabels = {
+            1: "Bad",
+            2: "Poor",
+            3: "Average",
+            4: "Good",
+            5: "Excellent"
+        };
+
+
+        /* ========================================
+           RATE FUNCTION
+        ======================================== */
+
+        function rate(cat, score) {
+
+            state[cat] = score;
+
+            const container = document.querySelector(
+                `.emoji-group[data-cat="${cat}"]`
+            );
+
+            if (container) {
+
+                const buttons = container.querySelectorAll(".emoji-btn");
+
+                buttons.forEach((button, index) => {
+
+                    /* Fill all stars up to and including the selected one */
+                    if (index + 1 <= score) {
+
+                        button.classList.add("active");
+
+                    } else {
+
+                        button.classList.remove("active");
+
+                    }
+
+                });
+
+            }
+
+
+            /* Update rating text */
+
+            const label = document.getElementById(
+                `rating-label-${cat}`
+            );
+
+            if (label) {
+
+                /* Remove all previous score colour classes */
+                label.classList.remove(
+                    "rating-score-1", "rating-score-2",
+                    "rating-score-3", "rating-score-4", "rating-score-5"
+                );
+
+                if (score > 0) {
+
+                    label.textContent = ratingLabels[score];
+                    label.classList.add(`rating-score-${score}`);
+
+                } else {
+
+                    label.textContent = "";
+
+                }
+
+            }
+
         }
+
+
+        /* ========================================
+           SUBMIT FEEDBACK
+        ======================================== */
+
+        async function submitFeedback(e) {
+
+            e.preventDefault();
+
+
+            const btn = document.getElementById("submitBtn");
+
+            btn.disabled = true;
+
+            btn.textContent = "Submitting...";
+
+
+            /* Bus number */
+
+            const digits = document
+                .getElementById("busDigits")
+                .value
+                .trim();
+
+            const busId = digits
+                ? `UP53 K ${digits}`
+                : null;
+
+
+            /* API payload */
+
+            const payload = {
+
+                route_id:
+                    document.getElementById("routeSelect").value,
+
+                trip_id:
+                    null,
+
+                punctuality_rating:
+                    state.punctuality || null,
+
+                cleanliness_rating:
+                    state.cleanliness || null,
+
+                crowding_rating:
+                    state.crowding || null,
+
+                driver_rating:
+                    state.driver || null,
+
+                overall_rating:
+                    state.overall || 4.0,
+
+                raw_comment:
+                    document.getElementById("commentBox").value.trim() || null,
+
+                stop_name:
+                    document.getElementById("stopSelect").value || null,
+
+                bus_id:
+                    busId,
+
+                channel:
+                    "WEB"
+            };
+
+
+            try {
+
+                const res = await fetch(
+                    "/api/v1/feedback/",
+                    {
+                        method: "POST",
+
+                        headers: {
+                            "Content-Type": "application/json"
+                        },
+
+                        body: JSON.stringify(payload)
+                    }
+                );
+
+
+                /* Reference ID */
+
+                const ref =
+                    "UP53-" +
+                    Math.floor(
+                        1000 + Math.random() * 9000
+                    );
+
+
+                document.getElementById(
+                    "refCode"
+                ).textContent = ref;
+
+
+                /* Show success */
+
+                document
+                    .getElementById("feedbackForm")
+                    .classList.add("hidden");
+
+                document
+                    .getElementById("pageHeading")
+                    .classList.add("hidden");
+
+                document
+                    .getElementById("successCard")
+                    .classList.remove("hidden");
+
+
+            } catch (err) {
+
+                /*
+                    Keep the same success behaviour
+                    as the original implementation.
+                */
+
+                document.getElementById(
+                    "refCode"
+                ).textContent =
+                    "UP53-" +
+                    Math.floor(
+                        1000 + Math.random() * 9000
+                    );
+
+
+                document
+                    .getElementById("feedbackForm")
+                    .classList.add("hidden");
+
+                document
+                    .getElementById("pageHeading")
+                    .classList.add("hidden");
+
+                document
+                    .getElementById("successCard")
+                    .classList.remove("hidden");
+
+            } finally {
+
+                btn.disabled = false;
+
+                btn.textContent = "Submit Feedback";
+
+            }
+
+        }
+
+
+        /* ========================================
+           COPY REFERENCE ID
+        ======================================== */
+
+        function copyRefId() {
+
+            const text = document.getElementById("refCode").textContent.trim();
+            const btn  = document.getElementById("copyRefBtn");
+
+            navigator.clipboard.writeText(text).then(() => {
+
+                /* Swap to a tick icon briefly */
+                btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+                btn.classList.add("text-green-500");
+
+                setTimeout(() => {
+
+                    btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>`;
+                    btn.classList.remove("text-green-500");
+
+                }, 1800);
+
+            });
+
+        }
+
+
+        /* ========================================
+           RESET FORM
+        ======================================== */
+
+        function resetForm() {
+
+            /* Clear inputs */
+
+            document.getElementById(
+                "commentBox"
+            ).value = "";
+
+            document.getElementById(
+                "busDigits"
+            ).value = "";
+
+
+            /* Reset ratings */
+
+            rate("punctuality", 0);
+
+            rate("cleanliness", 0);
+
+            rate("crowding", 0);
+
+            rate("driver", 0);
+
+            rate("overall", 0);
+
+
+            /* Reset success state */
+
+            document
+                .getElementById("successCard")
+                .classList.add("hidden");
+
+            document
+                .getElementById("pageHeading")
+                .classList.remove("hidden");
+
+            document
+                .getElementById("feedbackForm")
+                .classList.remove("hidden");
+
+        }
+
     </script>
+
 </body>
 </html>

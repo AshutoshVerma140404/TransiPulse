@@ -235,3 +235,44 @@ class BatchProcessRequest(BaseModel):
     route_id: Optional[str] = None
     limit: int = Field(default=100, ge=1, le=5000)
     force: bool = Field(default=False, description="Re-classify already classified records")
+
+
+# ---------------------------------------------------------------------------
+# Decision Support & Actionable Recommendations (Company & Driver)
+# ---------------------------------------------------------------------------
+class CompanyRecommendation(BaseModel):
+    """Actionable operational directive for transit dispatchers and depot managers."""
+
+    id: str
+    route_id: str
+    title: str
+    category: str  # Fleet Capacity, Timetable Adjustment, Depot Maintenance, Safety Patrol
+    priority: str  # Critical, High, Medium, Normal
+    concrete_action: str
+    expected_impact: str
+    time_window: Optional[str] = None
+    target_asset: Optional[str] = None  # e.g., "Depot 42", "Bus BUS-1042", "Stop 14"
+    status: str = "PENDING"  # PENDING, DISPATCHED, SCHEDULED, RESOLVED
+
+
+class DriverCoachingCard(BaseModel):
+    """Actionable coaching tip or commendation for transit bus drivers."""
+
+    id: str
+    driver_id: Optional[str] = None
+    route_id: str
+    category: str  # Pacing & Anti-Bunching, Passenger Courtesy, Smooth Driving, Commendation
+    focus_area: str
+    coaching_tip: str
+    sample_feedback: Optional[str] = None
+    sentiment: str = "Constructive"  # Positive, Constructive
+    badge: Optional[str] = None
+
+
+class RecommendationBundle(BaseModel):
+    """Consolidated operations suggestions for company and drivers."""
+
+    route_id: Optional[str] = None
+    company_actions: list[CompanyRecommendation]
+    driver_coaching: list[DriverCoachingCard]
+    generated_at: datetime = Field(default_factory=datetime.now)
