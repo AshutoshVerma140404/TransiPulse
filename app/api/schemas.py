@@ -193,6 +193,10 @@ class CaseStudyCard(BaseModel):
 
     route_id: str
     overall_rating: float
+    punctuality_rating: Optional[float] = None
+    cleanliness_rating: Optional[float] = None
+    crowding_rating: Optional[float] = None
+    driver_rating: Optional[float] = None
     top_issue: Optional[str] = None
     second_issue: Optional[str] = None
     worst_period: Optional[str] = None

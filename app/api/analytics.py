@@ -36,7 +36,7 @@ async def get_rankings(
             second_issue=r.get("second_issue"),
             worst_period=r.get("worst_period"),
             deterioration_status=r.get("deterioration_status", "STABLE"),
-            total_complaints_month=r.get("total_complaints_month", 0),
+            total_complaints_month=r.get("complaint_count", r.get("total_complaints_month", 0)),
         )
         for r in results
     ]

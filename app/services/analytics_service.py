@@ -43,11 +43,7 @@ class AnalyticsService:
 
     async def get_route_summary(self, route_id: str) -> CaseStudyCard:
         """Return the exact case-study card format for a route."""
-        cache = await self.db.get(RouteAnalyticsCache, route_id)
-        if cache is not None:
-            return CaseStudyCard(**cache.to_case_study_dict())
-
-        # Compute on-the-fly if cache miss
+        # Fetch ratings for route
         feedback_rows = await self._fetch_ratings_for_route(route_id)
         bayesian, raw_avg = ranking_engine.compute_bayesian_score(feedback_rows, settings.bayesian_m)
         worst_period = temporal_engine.compute_worst_period(feedback_rows)
@@ -56,9 +52,31 @@ class AnalyticsService:
         complaints = [1] * len(feedback_rows)
         deterioration = deterioration_engine.compute_deterioration(ratings, complaints)
 
+        def _calc_sub_avg(key: str) -> Optional[float]:
+            vals = [float(f[key]) for f in feedback_rows if f.get(key) is not None]
+            return round(sum(vals) / len(vals), 1) if vals else None
+
+        punctuality = _calc_sub_avg("punctuality_rating")
+        cleanliness = _calc_sub_avg("cleanliness_rating")
+        crowding = _calc_sub_avg("crowding_rating")
+        driver = _calc_sub_avg("driver_rating")
+
+        cache = await self.db.get(RouteAnalyticsCache, route_id)
+        if cache is not None:
+            data = cache.to_case_study_dict()
+            data["punctuality_rating"] = punctuality
+            data["cleanliness_rating"] = cleanliness
+            data["crowding_rating"] = crowding
+            data["driver_rating"] = driver
+            return CaseStudyCard(**data)
+
         return CaseStudyCard(
             route_id=route_id,
             overall_rating=round(bayesian, 1) if bayesian else 0.0,
+            punctuality_rating=punctuality,
+            cleanliness_rating=cleanliness,
+            crowding_rating=crowding,
+            driver_rating=driver,
             top_issue=top_issues.get("top_issue"),
             second_issue=top_issues.get("second_issue"),
             worst_period=worst_period,
@@ -161,11 +179,17 @@ class AnalyticsService:
         )
         rows = []
         for row in result.all():
+            # Derive day_of_week (0=Mon … 6=Sun) from created_at so the
+            # heatmap engine has real per-day data (the Feedback model has no
+            # dedicated day_of_week column).
+            created_at = row.created_at
+            day_of_week = created_at.weekday() if created_at is not None else 0
             rows.append({
                 "route_id": row.route_id,
                 "overall_rating": row.overall_rating,
-                "created_at": row.created_at,
-                "hour_of_day": row.hour_of_day,
+                "created_at": created_at,
+                "hour_of_day": row.hour_of_day if row.hour_of_day is not None else (created_at.hour if created_at else 0),
+                "day_of_week": day_of_week,
                 "punctuality_rating": row.punctuality_rating,
                 "cleanliness_rating": row.cleanliness_rating,
                 "crowding_rating": row.crowding_rating,
