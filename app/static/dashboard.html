@@ -559,6 +559,12 @@
             grid-template-columns: 1fr;
             gap: 1.5rem;
             align-items: start;
+            min-width: 0;
+            width: 100%;
+        }
+        .spotlight-container > * {
+            min-width: 0;
+            max-width: 100%;
         }
         @media (min-width: 768px) {
             .spotlight-container {
@@ -566,15 +572,66 @@
             }
         }
         .spotlight-chart-wrapper {
-            position: relative;
-            width: 100%;
-            height: 260px;
-            max-height: 280px;
             background: #ffffff;
             border: 1px solid #f1f5f9;
             border-radius: 0.75rem;
             padding: 1rem;
             box-sizing: border-box;
+            width: 100%;
+            min-width: 0;
+            max-width: 100%;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+        }
+        .spotlight-chart-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 0.75rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid #f8fafc;
+        }
+        .spotlight-chart-title {
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: #475569;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+        .spotlight-chart-hint {
+            font-size: 0.65rem;
+            color: #94a3b8;
+            font-weight: 500;
+        }
+        .spotlight-chart-scroll-wrapper {
+            position: relative;
+            width: 100%;
+            min-width: 0;
+            overflow-x: auto;
+            overflow-y: hidden;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: thin;
+            scrollbar-color: #cbd5e1 transparent;
+        }
+        .spotlight-chart-scroll-wrapper::-webkit-scrollbar {
+            height: 4px;
+        }
+        .spotlight-chart-scroll-wrapper::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .spotlight-chart-scroll-wrapper::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        .spotlight-chart-inner {
+            position: relative;
+            min-width: 320px;
+            width: 100%;
+            height: 250px;
         }
 
         /* ── ALERT BADGE on nav ──────────────────────────── */
@@ -905,7 +962,18 @@
                     <div class="spotlight-container">
                         <div id="spotlightDetails"><div class="spotlight-empty">Select a route above to view its case study.</div></div>
                         <div class="spotlight-chart-wrapper">
-                            <canvas id="routeDetailChart"></canvas>
+                            <div class="spotlight-chart-header">
+                                <div class="spotlight-chart-title">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color:#8b5cf6;"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+                                    Category Performance
+                                </div>
+                                <span class="spotlight-chart-hint">Scale 1.0 – 5.0 ★</span>
+                            </div>
+                            <div class="spotlight-chart-scroll-wrapper">
+                                <div class="spotlight-chart-inner">
+                                    <canvas id="routeDetailChart"></canvas>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1511,6 +1579,62 @@
                 summary.overall_rating,
             ].map(v => v ?? 0);
 
+            /* Color styling helper */
+            const getRatingPalette = (v) => {
+                if (v >= 4.0) return { bg: 'rgba(34, 197, 94, 0.85)', border: '#16a34a' };
+                if (v >= 3.0) return { bg: 'rgba(59, 130, 246, 0.85)', border: '#2563eb' };
+                if (v >= 2.0) return { bg: 'rgba(245, 158, 11, 0.85)', border: '#d97706' };
+                return { bg: 'rgba(239, 68, 68, 0.85)', border: '#dc2626' };
+            };
+
+            const colors = vals.map(v => getRatingPalette(v));
+
+            /* Custom plugin: Benchmark SLA line (3.5) & Direct value labels on bars */
+            const spotlightPlugin = {
+                id: 'spotlightPlugin',
+                afterDatasetsDraw(chart) {
+                    const { ctx, chartArea, scales } = chart;
+                    if (!chartArea || !scales.y) return;
+
+                    // 1. Target Benchmark Line at 3.5
+                    const yTarget = scales.y.getPixelForValue(3.5);
+                    if (yTarget >= chartArea.top && yTarget <= chartArea.bottom) {
+                        ctx.save();
+                        ctx.beginPath();
+                        ctx.setLineDash([4, 4]);
+                        ctx.strokeStyle = '#cbd5e1';
+                        ctx.lineWidth = 1.2;
+                        ctx.moveTo(chartArea.left, yTarget);
+                        ctx.lineTo(chartArea.right, yTarget);
+                        ctx.stroke();
+
+                        ctx.fillStyle = '#94a3b8';
+                        ctx.font = '600 10px Inter, sans-serif';
+                        ctx.textAlign = 'right';
+                        ctx.textBaseline = 'bottom';
+                        ctx.fillText('Target 3.5 ★', chartArea.right - 2, yTarget - 2);
+                        ctx.restore();
+                    }
+
+                    // 2. Direct Value Labels on Top of Bars
+                    chart.data.datasets.forEach((dataset, i) => {
+                        const meta = chart.getDatasetMeta(i);
+                        meta.data.forEach((bar, index) => {
+                            const val = dataset.data[index];
+                            if (val !== undefined && val !== null && val > 0) {
+                                ctx.save();
+                                ctx.font = '700 11px Inter, sans-serif';
+                                ctx.fillStyle = '#334155';
+                                ctx.textAlign = 'center';
+                                ctx.textBaseline = 'bottom';
+                                ctx.fillText(Number(val).toFixed(1) + ' ★', bar.x, bar.y - 4);
+                                ctx.restore();
+                            }
+                        });
+                    });
+                }
+            };
+
             _spotlightChart = new Chart(ctx2, {
                 type: 'bar',
                 data: {
@@ -1518,34 +1642,74 @@
                     datasets: [{
                         label: 'Rating',
                         data: vals,
-                        backgroundColor: vals.map(v =>
-                            v >= 4  ? '#22c55e' :
-                            v >= 3  ? '#3b82f6' :
-                            v >= 2  ? '#f59e0b' :
-                                      '#ef4444'),
-                        borderRadius: 6,
+                        backgroundColor: colors.map(c => c.bg),
+                        borderColor: colors.map(c => c.border),
+                        borderWidth: 1.5,
+                        borderRadius: {
+                            topLeft: 6,
+                            topRight: 6,
+                            bottomLeft: 0,
+                            bottomRight: 0
+                        },
                         borderSkipped: false,
-                        maxBarThickness: 36,
+                        maxBarThickness: 32,
                     }]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
+                    layout: {
+                        padding: {
+                            top: 22,
+                            right: 8,
+                            left: 4,
+                            bottom: 4
+                        }
+                    },
                     plugins: { 
                         legend: { display: false },
                         tooltip: {
                             backgroundColor: '#0f172a',
-                            titleFont: { size: 12, weight: 'bold' },
+                            titleFont: { size: 12, weight: '700' },
                             bodyFont: { size: 12 },
                             padding: 10,
-                            cornerRadius: 8
+                            cornerRadius: 8,
+                            displayColors: false,
+                            callbacks: {
+                                label: function(context) {
+                                    return ` Rating: ${Number(context.parsed.y).toFixed(1)} / 5.0`;
+                                }
+                            }
                         }
                     },
                     scales: {
-                        x: { ticks: { color: '#64748b', font: { size: 11, weight: '600' } }, grid: { display: false } },
-                        y: { ticks: { color: '#64748b', font: { size: 11 }, stepSize: 1 }, grid: { color: '#f1f5f9' }, beginAtZero: true, max: 5 },
+                        x: {
+                            ticks: {
+                                color: '#64748b',
+                                font: { size: 11, weight: '600' },
+                                autoSkip: false,
+                                maxRotation: 0,
+                                minRotation: 0
+                            },
+                            grid: { display: false },
+                            border: { display: true, color: '#e2e8f0' }
+                        },
+                        y: {
+                            ticks: {
+                                color: '#94a3b8',
+                                font: { size: 11 },
+                                stepSize: 1,
+                                callback: function(val) {
+                                    return val <= 5 ? val : '';
+                                }
+                            },
+                            grid: { color: '#f1f5f9' },
+                            beginAtZero: true,
+                            max: 5.4
+                        },
                     },
-                }
+                },
+                plugins: [spotlightPlugin]
             });
         }
 
