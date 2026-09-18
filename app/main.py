@@ -87,17 +87,12 @@ async def commuter_page():
 # ---------------------------------------------------------------------------
 # Root endpoint
 # ---------------------------------------------------------------------------
+from fastapi.responses import RedirectResponse
+
 @app.get("/", tags=["Root"])
-async def root() -> dict[str, str]:
-    """Health check / welcome endpoint."""
-    return {
-        "message": f"Welcome to {settings.app_name}",
-        "version": settings.app_version,
-        "docs": "/docs",
-        "redoc": "/redoc",
-        "dashboard": "/dashboard",
-        "commuter": "/commuter",
-    }
+async def root():
+    """Redirect to the TransiPulse dashboard."""
+    return RedirectResponse(url="/dashboard")
 
 
 if __name__ == "__main__":
